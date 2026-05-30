@@ -25,10 +25,16 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    try:
-        await init_db()
-    except SQLAlchemyError as exc:  # don't crash boot if DB is briefly unavailable
-        LOG.error("db_init_failed", extra={"error": str(exc)})
+    # Retry DB init: on hosts like Railway the app can boot before Postgres is ready.
+    import asyncio
+
+    for attempt in range(1, 11):
+        try:
+            await init_db()
+            break
+        except SQLAlchemyError as exc:
+            LOG.error("db_init_retry", extra={"attempt": attempt, "error": str(exc)})
+            await asyncio.sleep(min(2 * attempt, 10))
     yield
 
 
