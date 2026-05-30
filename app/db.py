@@ -16,6 +16,16 @@ from .config import get_settings
 settings = get_settings()
 
 
+def _normalize_dsn(url: str) -> str:
+    """Accept the plain DSNs that hosts (Railway/Heroku) inject and ensure the async
+    driver is used. e.g. postgres://... or postgresql://... -> postgresql+asyncpg://..."""
+    if url.startswith("postgres://"):
+        url = "postgresql://" + url[len("postgres://"):]
+    if url.startswith("postgresql://"):
+        url = "postgresql+asyncpg://" + url[len("postgresql://"):]
+    return url
+
+
 class Base(DeclarativeBase):
     pass
 
@@ -44,7 +54,7 @@ class EventRow(Base):
 # composite index supporting the common "store + time-window" scans
 Index("ix_events_store_ts", EventRow.store_id, EventRow.timestamp)
 
-_engine = create_async_engine(settings.database_url, pool_pre_ping=True, future=True)
+_engine = create_async_engine(_normalize_dsn(settings.database_url), pool_pre_ping=True, future=True)
 SessionLocal = async_sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
 
 
