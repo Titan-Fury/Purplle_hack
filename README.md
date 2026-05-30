@@ -40,21 +40,37 @@ ideally a GPU). Run it on a host with the clips and feed its output into the API
 # install pipeline deps (install a CUDA torch build first if you have a GPU)
 pip install -r pipeline/requirements.txt
 
-# point the layout at where your clips live (data/store_layout.json maps cameras -> files)
-# batch mode: write events to JSONL
-python -m pipeline.run --store STORE_BLR_002 --layout data/store_layout.json \
-    --out pipeline/output/events_STORE_BLR_002.jsonl
+# batch mode: write events to JSONL (real store = ST1008, Brigade Road Bangalore)
+python -m pipeline.run --store ST1008 --layout data/store_layout.json \
+    --out pipeline/output/events_ST1008.jsonl
 
 # live mode: stream events straight into the running API in real time
-python -m pipeline.run --store STORE_BLR_002 --api-url http://localhost:8000 --realtime
+python -m pipeline.run --store ST1008 --api-url http://localhost:8000 --realtime
 ```
 
-`data/store_layout.json` maps each `camera_id` to a clip path, an entry line, and zone
-polygons (normalised 0–1 coordinates). Replace it with the organiser's official layout
-when available — no code changes are needed.
+### Camera roles (entry / floor / billing / staff_area)
 
-The pipeline emits the event schema in `app/models.py`; events land in the JSONL file
-and (with `--api-url`) are POSTed to `/events/ingest` in batches.
+A camera's role is resolved in priority order (`pipeline/camera_resolver.py`):
+1. **Registry** — `store_layout.json` declares each camera's role (authoritative; a
+   physical camera doesn't move, so its role is a registration fact).
+2. **Convention** — the file path/name (e.g. `clips/ST1008/entry/cam.mp4`) when not in the
+   registry. Enables bulk fleet ingestion.
+3. **Auto-classify** (`--resolve-mode auto`) — last resort: a VLM (if `VLM_API_KEY` is set)
+   or a motion/track heuristic proposes a role, logged for human confirmation.
+
+For the provided footage the registry maps: `CAM 3`→entry, `CAM 1`/`CAM 2`→floor,
+`CAM 5`→billing, `CAM 4`→staff_area. The **staff_area** camera (back-of-house) flags any
+person seen there as staff and, via the shared Re-ID gallery, excludes them from customer
+metrics on every camera.
+
+### Data & privacy
+
+`store_layout.json` maps each `camera_id` to a clip path, entry line, and zone polygons
+(normalised 0–1). The committed `data/pos_transactions.csv` is **anonymised**
+(store_id, transaction_id, timestamp, basket_value) — the raw Purplle export contains
+customer names/phone numbers and is git-ignored. The POS loader auto-detects both the
+documented schema and the raw 39-column export (aggregating line items to invoices and
+converting IST→UTC).
 
 ---
 

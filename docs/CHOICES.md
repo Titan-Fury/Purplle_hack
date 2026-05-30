@@ -1,6 +1,7 @@
 # CHOICES
 
-Three decisions, each with the options I weighed, what AI suggested, and what I chose.
+Three core decisions plus a real-data decision, each with the options I weighed, what AI
+suggested, and what I chose.
 
 ---
 
@@ -74,3 +75,35 @@ concurrent load. The migration path is materialised per-minute rollups keyed by
 contracts. Storage is Postgres (async via asyncpg) for production with SQLite as a
 zero-setup fallback for tests and local runs — chosen so `docker compose up` needs no
 external services and the test suite runs without a database server.
+
+---
+
+## Decision 4 — Camera role resolution & staff detection (driven by the real data)
+
+**Context.** The real footage is the Purplle Brigade Road store (`ST1008`): `CAM 3` = entry,
+`CAM 1`/`CAM 2` = floor, `CAM 5` = billing, and `CAM 4` = a back-of-house **staff area**
+(bags + water can visible). Two questions followed: how does the system know which clip is
+which, and how do we exclude staff?
+
+**Options for "which camera is which".** (a) hardcode per clip; (b) folder/filename
+convention; (c) content-based auto-detection.
+
+**What AI suggested.** The LLM proposed VLM auto-classification per clip as the headline
+approach. I disagreed with making it primary: a fixed CCTV camera's role is an
+*installation fact*, not something to re-infer per clip, and trusting a model for the
+counting-critical "entry" role is risky.
+
+**What I chose.** A layered resolver (`pipeline/camera_resolver.py`): **registry**
+(`store_layout.json`) first, **folder/filename convention** next (for fleet-scale bulk
+ingest), and a VLM/heuristic **auto-classify only as a last resort**, whose output is a
+logged *proposal* for human confirmation. Production-correct ordering, still scales to many
+stores, and keeps the VLM available (documented prompt) for genuinely unlabelled footage.
+
+**Staff detection.** Instead of relying only on the behavioural heuristic, I use the
+back-of-house camera as ground truth: anyone in `CAM 4` is flagged staff, and the shared
+Re-ID gallery propagates that flag to the same person on every other camera — a far
+stronger signal than "visited many zones / stayed long".
+
+**Privacy.** The raw POS export carries customer names and phone numbers. I commit only an
+anonymised, invoice-level POS file and git-ignore the raw export; correlation needs store +
+timestamp + amount, never identity.
