@@ -18,7 +18,13 @@
     overflow-x:hidden;
   }
   #bg{position:fixed; inset:0; z-index:0; display:block}
-  .wrap{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 22px 60px}
+  .orbs{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+  .orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.45;will-change:transform;transition:transform .12s ease-out}
+  .o1{width:440px;height:440px;left:-90px;top:-70px;background:radial-gradient(circle,#7c83ff,transparent 70%)}
+  .o2{width:560px;height:560px;right:-140px;top:8%;background:radial-gradient(circle,#22d3ee,transparent 70%)}
+  .o3{width:380px;height:380px;left:28%;bottom:-140px;background:radial-gradient(circle,#a855f7,transparent 70%)}
+  .o4{width:320px;height:320px;right:18%;bottom:4%;background:radial-gradient(circle,#34d399,transparent 70%)}
+  .wrap{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 22px 80px}
 
   header{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:22px}
   .logo{display:flex; align-items:center; gap:12px}
@@ -84,6 +90,12 @@
 </style>
 </head>
 <body>
+<div class="orbs">
+  <span class="orb o1" data-depth="0.025"></span>
+  <span class="orb o2" data-depth="0.055"></span>
+  <span class="orb o3" data-depth="0.085"></span>
+  <span class="orb o4" data-depth="0.04"></span>
+</div>
 <canvas id="bg"></canvas>
 <div class="wrap">
   <header>
@@ -112,6 +124,21 @@
 </div>
 
 <script>
+/* ---------- mouse + scroll parallax (layered depth) ---------- */
+const orbEls = [...document.querySelectorAll('.orb')];
+let pmx = 0, pmy = 0, psy = 0;
+function applyParallax(){
+  for(const o of orbEls){
+    const d = parseFloat(o.dataset.depth) || 0.04;
+    const tx = pmx * d * 900, ty = pmy * d * 900 - psy * d * 6;
+    o.style.transform = `translate3d(${tx}px,${ty}px,0)`;
+  }
+}
+addEventListener('mousemove', e => {
+  pmx = e.clientX/innerWidth - .5; pmy = e.clientY/innerHeight - .5; applyParallax();
+});
+addEventListener('scroll', () => { psy = scrollY; applyParallax(); }, {passive:true});
+
 /* ---------- interactive particle-network background ---------- */
 const cv = document.getElementById('bg'), cx = cv.getContext('2d');
 let W, H, DPR, parts = [], ripples = [];
