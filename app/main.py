@@ -11,7 +11,7 @@ from fastapi import FastAPI
 
 from .config import get_settings
 from .db import init_db
-from .routers import events
+from .routers import events, stores
 
 settings = get_settings()
 
@@ -30,6 +30,7 @@ app = FastAPI(
 )
 
 app.include_router(events.router)
+app.include_router(stores.router)
 
 
 @app.get("/", tags=["meta"])
