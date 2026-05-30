@@ -1,0 +1,24 @@
+# Keep the API image small and the build context clean.
+.git
+.gitignore
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+.coveragerc
+htmlcov/
+.venv/
+venv/
+
+# heavy / irrelevant to the API image
+CCTV Footage*/
+*.mp4
+*.zip
+*.pdf
+pipeline/
+tests/
+docs/
+dashboard/
+pgdata/
+*.md
+.env

@@ -1,0 +1,36 @@
+# `docker compose up` starts Postgres + the API with zero manual steps after git clone.
+# All config has working defaults inline, so no .env file is required to boot.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: apex
+      POSTGRES_PASSWORD: apex_secret
+      POSTGRES_DB: store_intelligence
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apex -d store_intelligence"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+asyncpg://apex:apex_secret@db:5432/store_intelligence
+      APP_ENV: production
+      LOG_LEVEL: INFO
+      STORE_LAYOUT_PATH: data/store_layout.json
+      POS_CSV_PATH: data/pos_transactions.csv
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
