@@ -1,0 +1,8 @@
+# SQLAlchemy's async engine executes inside greenlets; without this, coverage cannot
+# see endpoint code that runs while awaiting the database, under-reporting real coverage.
+[run]
+concurrency = greenlet,thread
+source = app
+
+[report]
+show_missing = True
