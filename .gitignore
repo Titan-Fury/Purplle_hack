@@ -7,6 +7,12 @@ CCTV Footage*/
 *.zip
 Purplle Tech Challenge*.pdf
 
+# ---- Raw challenge resource files (contain PII / not for redistribution) ----
+Brigade_Bangalore_*.csv
+Brigade Road - Store layout*.xlsx
+Assessment Evaluation Framework*.pdf
+_brigade_layout.png
+
 # ---- ML model weights / caches ----
 *.pt
 *.pth
