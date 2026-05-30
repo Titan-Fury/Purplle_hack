@@ -7,9 +7,10 @@ middleware, and converts infrastructure failures into clean, structured response
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from . import health
@@ -74,3 +75,11 @@ async def _unhandled_handler(request: Request, exc: Exception) -> JSONResponse:
 @app.get("/", tags=["meta"])
 async def root() -> dict:
     return {"service": "store-intelligence", "version": app.version, "env": settings.app_env}
+
+
+_DASHBOARD = Path(__file__).parent / "static" / "dashboard.html"
+
+
+@app.get("/dashboard", tags=["meta"], include_in_schema=False)
+async def dashboard() -> FileResponse:
+    return FileResponse(_DASHBOARD, media_type="text/html")
