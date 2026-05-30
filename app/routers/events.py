@@ -5,7 +5,7 @@ event yields a per-item error in the response rather than a 422 for the whole ba
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,5 +23,10 @@ class RawIngest(BaseModel):
 
 
 @router.post("/ingest", response_model=IngestResponse)
-async def ingest(payload: RawIngest, session: AsyncSession = Depends(get_session)) -> IngestResponse:
+async def ingest(
+    payload: RawIngest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> IngestResponse:
+    request.state.event_count = len(payload.events)
     return await ingest_events(session, payload.events)

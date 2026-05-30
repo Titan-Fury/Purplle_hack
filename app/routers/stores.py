@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..analytics import compute_funnel, compute_heatmap, compute_metrics
+from ..anomalies import compute_anomalies
 from ..db import get_session
 from ..layout import get_store_meta, known_store_ids
 
@@ -47,3 +48,13 @@ async def heatmap(
 ) -> dict:
     _check_store(store_id)
     return await compute_heatmap(session, store_id, date)
+
+
+@router.get("/{store_id}/anomalies")
+async def anomalies(
+    store_id: str,
+    date: str | None = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    _check_store(store_id)
+    return await compute_anomalies(session, store_id, date)
