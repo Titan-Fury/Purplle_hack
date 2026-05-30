@@ -137,6 +137,10 @@ class StoreTracker:
     # ---- entry / exit -----------------------------------------------------
     def _handle_threshold(self, st, cam, cx, cy, confidence, ts):
         side = line_side(cam.entry_line, cx, cy)
+        margin = CONFIG.entry_line_min_disp
+        # hysteresis: ignore points hovering on the line; only act when clearly on a side
+        if abs(side) < margin:
+            return
         if st.prev_side is None:
             st.prev_side = side
             return

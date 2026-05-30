@@ -39,7 +39,7 @@ class PipelineConfig:
     # ---- behavioural rules ----
     dwell_emit_interval_s: int = _i("DWELL_EMIT_INTERVAL_S", 30)
     zone_min_presence_s: float = _f("ZONE_MIN_PRESENCE_S", 1.0)  # debounce zone flicker
-    entry_line_min_disp: float = _f("ENTRY_LINE_MIN_DISP", 0.02)  # normalised
+    entry_line_min_disp: float = _f("ENTRY_LINE_MIN_DISP", 0.05)  # hysteresis margin (normalised)
     reentry_window_s: float = _f("REENTRY_WINDOW_S", 600.0)
     track_lost_grace_s: float = _f("TRACK_LOST_GRACE_S", 2.0)
 
@@ -49,7 +49,9 @@ class PipelineConfig:
     staff_min_entry_crossings: int = _i("STAFF_MIN_ENTRY_CROSSINGS", 3)
 
     # ---- re-id ----
-    reid_match_threshold: float = _f("REID_MATCH_THRESHOLD", 0.55)  # cosine distance
+    reid_match_threshold: float = _f("REID_MATCH_THRESHOLD", 0.55)  # cosine distance (OSNet)
+    reid_hist_threshold: float = _f("REID_HIST_THRESHOLD", 0.12)    # stricter for histogram
+    reid_coexist_window_s: float = _f("REID_COEXIST_WINDOW_S", 1.5)  # active -> can't be same person
     reid_gallery_ttl_s: float = _f("REID_GALLERY_TTL_S", 900.0)
 
     # ---- ingest ----

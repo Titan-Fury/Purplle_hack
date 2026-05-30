@@ -128,16 +128,28 @@ class ReIDGallery:
         Returns (visitor_id, is_reentry, is_cross_camera_dup).
         - is_reentry: matched a visitor that previously EXITed.
         - is_cross_camera_dup: matched an active visitor first seen on another camera.
+
+        Two guards prevent the classic failure of merging everyone into one id:
+          * coexistence: a gallery entry seen within reid_coexist_window_s and not exited
+            still has a live track, so a brand-new track cannot be that same person.
+          * threshold by embedder: histograms cluster tightly, so they need a much
+            stricter distance than OSNet embeddings.
         """
         self._evict(now)
+        threshold = (
+            CONFIG.reid_match_threshold if self.mode == "osnet" else CONFIG.reid_hist_threshold
+        )
         best_vid, best_dist = None, 1.0
         if embedding is not None:
             for vid, e in self._entries.items():
+                # skip currently-active (coexisting) visitors — different physical person
+                if not e.exited and (now - e.last_seen) < CONFIG.reid_coexist_window_s:
+                    continue
                 d = cosine_distance(embedding, e.embedding)
                 if d < best_dist:
                     best_vid, best_dist = vid, d
 
-        if best_vid is not None and best_dist <= CONFIG.reid_match_threshold:
+        if best_vid is not None and best_dist <= threshold:
             e = self._entries[best_vid]
             is_reentry = e.exited and (now - e.last_seen) <= CONFIG.reentry_window_s
             is_cross = (not e.exited) and (camera_id not in e.cameras)

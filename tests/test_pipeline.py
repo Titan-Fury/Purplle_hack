@@ -31,9 +31,9 @@ def _run(steps):
 
 def test_group_entry_counts_individuals():
     steps = []
-    for tid in (1, 2, 3):  # three people cross the entry line together
-        steps.append(("CAM_ENTRY_01", tid, 0.5, 0.50, 0.0))
-        steps.append(("CAM_ENTRY_01", tid, 0.5, 0.60, 0.5))
+    for tid in (1, 2, 3):  # three people cross the entry line together (clear of hysteresis)
+        steps.append(("CAM_ENTRY_01", tid, 0.5, 0.40, 0.0))
+        steps.append(("CAM_ENTRY_01", tid, 0.5, 0.70, 0.5))
     _, counts = _run(steps)
     assert counts["ENTRY"] == 3  # individuals, not one group
 

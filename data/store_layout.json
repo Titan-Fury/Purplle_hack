@@ -20,7 +20,7 @@
           "camera_id": "CAM_ENTRY_01",
           "role": "entry",
           "source": "CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage/CAM 3.mp4",
-          "frame": { "width": 1920, "height": 1080, "fps": 15 },
+          "frame": { "width": 1920, "height": 1080, "fps": 30 },
           "entry_line": { "x1": 0.0, "y1": 0.5, "x2": 1.0, "y2": 0.5 },
           "inbound_direction": "down",
           "covers_zones": ["ENTRANCE"],
@@ -30,7 +30,7 @@
           "camera_id": "CAM_FLOOR_01",
           "role": "floor",
           "source": "CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage/CAM 1.mp4",
-          "frame": { "width": 1920, "height": 1080, "fps": 15 },
+          "frame": { "width": 1920, "height": 1080, "fps": 30 },
           "covers_zones": ["SKINCARE_WALL", "MAKEUP_FOH"],
           "overlaps_with": ["CAM_ENTRY_01", "CAM_FLOOR_02"]
         },
@@ -38,7 +38,7 @@
           "camera_id": "CAM_FLOOR_02",
           "role": "floor",
           "source": "CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage/CAM 2.mp4",
-          "frame": { "width": 1920, "height": 1080, "fps": 15 },
+          "frame": { "width": 1920, "height": 1080, "fps": 30 },
           "covers_zones": ["MAKEUP_WALL", "FRAGRANCE_NAIL", "HAIRCARE"],
           "overlaps_with": ["CAM_FLOOR_01"]
         },
@@ -46,7 +46,7 @@
           "camera_id": "CAM_BILLING_01",
           "role": "billing",
           "source": "CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage/CAM 5.mp4",
-          "frame": { "width": 1920, "height": 1080, "fps": 15 },
+          "frame": { "width": 1920, "height": 1080, "fps": 25 },
           "covers_zones": ["BILLING"],
           "overlaps_with": []
         },
@@ -54,7 +54,7 @@
           "camera_id": "CAM_BACKROOM_01",
           "role": "staff_area",
           "source": "CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage/CAM 4.mp4",
-          "frame": { "width": 1920, "height": 1080, "fps": 15 },
+          "frame": { "width": 1920, "height": 1080, "fps": 25 },
           "covers_zones": ["STAFF_BACKROOM"],
           "overlaps_with": []
         }
