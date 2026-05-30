@@ -43,7 +43,12 @@ def role_from_convention(path: str) -> Optional[str]:
 
 # --------------------------------------------------------------------------- VLM
 class VLMClassifier:
-    """Optional vision-LLM classifier. Active only if VLM_API_KEY is set.
+    """Optional vision-LLM classifier (OpenAI-compatible Chat Completions API).
+
+    Works with hosted models (OpenAI/Groq/OpenRouter/Gemini) OR fully free & open-source
+    local models via Ollama — which needs no API key:
+        VLM_BASE_URL=http://localhost:11434/v1  VLM_MODEL=llama3.2-vision   (or llava,
+        moondream, qwen2.5vl). Active if VLM_API_KEY is set OR VLM_BASE_URL is overridden.
 
     Prompt (documented in DESIGN.md):
         "You are labelling a retail CCTV still. Reply with exactly one word from
@@ -61,12 +66,14 @@ class VLMClassifier:
 
     def __init__(self) -> None:
         self.api_key = os.getenv("VLM_API_KEY", "")
-        self.base_url = os.getenv("VLM_BASE_URL", "https://api.openai.com/v1")
+        self._base_override = os.getenv("VLM_BASE_URL", "")
+        self.base_url = self._base_override or "https://api.openai.com/v1"
         self.model = os.getenv("VLM_MODEL", "gpt-4o-mini")
 
     @property
     def available(self) -> bool:
-        return bool(self.api_key)
+        # a key (hosted) OR a custom base url (e.g. local Ollama, which needs no key)
+        return bool(self.api_key or self._base_override)
 
     def classify_frame(self, frame_bgr) -> Optional[str]:
         if not self.available:
@@ -81,9 +88,10 @@ class VLMClassifier:
             if not ok:
                 return None
             b64 = base64.b64encode(buf.tobytes()).decode()
+            headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
             resp = requests.post(
                 f"{self.base_url.rstrip('/')}/chat/completions",
-                headers={"Authorization": f"Bearer {self.api_key}"},
+                headers=headers,
                 json={
                     "model": self.model,
                     "max_tokens": 4,
@@ -93,7 +101,7 @@ class VLMClassifier:
                          "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
                     ]}],
                 },
-                timeout=20,
+                timeout=30,
             )
             word = resp.json()["choices"][0]["message"]["content"].strip().lower()
             return next((r for r in ROLES if r in word), None)

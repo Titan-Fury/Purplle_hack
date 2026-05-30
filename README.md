@@ -58,6 +58,11 @@ A camera's role is resolved in priority order (`pipeline/camera_resolver.py`):
 3. **Auto-classify** (`--resolve-mode auto`) — last resort: a VLM (if `VLM_API_KEY` is set)
    or a motion/track heuristic proposes a role, logged for human confirmation.
 
+> The VLM is **optional and off by default**. It speaks the OpenAI-compatible API, so it
+> works free & open-source with **Ollama** (no key): `VLM_BASE_URL=http://localhost:11434/v1`,
+> `VLM_MODEL=llama3.2-vision` (or `llava`, `moondream`, `qwen2.5vl`). Hosted free tiers
+> (Groq, OpenRouter, Gemini) also work by pointing `VLM_BASE_URL`/`VLM_API_KEY` at them.
+
 For the provided footage the registry maps: `CAM 3`→entry, `CAM 1`/`CAM 2`→floor,
 `CAM 5`→billing, `CAM 4`→staff_area. The **staff_area** camera (back-of-house) flags any
 person seen there as staff and, via the shared Re-ID gallery, excludes them from customer
