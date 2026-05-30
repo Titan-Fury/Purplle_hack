@@ -42,38 +42,116 @@ def role_from_convention(path: str) -> Optional[str]:
 
 
 # --------------------------------------------------------------------------- VLM
+PROMPT = (
+    "You are labelling a retail CCTV still. Reply with exactly one word from "
+    "[entry, floor, billing, staff_area]: 'entry' if it shows a store "
+    "entrance/doorway/threshold, 'billing' if a checkout/cash counter, 'staff_area' "
+    "if a back-office/storeroom/employee area, otherwise 'floor'."
+)
+
+
+class _Provider:
+    """One OpenAI-compatible vision endpoint."""
+
+    def __init__(self, name, base_url, api_key, model, extra_headers=None):
+        self.name = name
+        self.base_url = base_url
+        self.api_key = api_key
+        self.model = model
+        self.extra_headers = extra_headers or {}
+
+
+def _build_providers() -> list[_Provider]:
+    """Build the fallback chain from env, in priority order.
+
+    Gemini (free tier) -> Groq (free tier) -> OpenRouter (free models) -> generic/Ollama.
+    Each is OpenAI-compatible, so the same call works for all. Only providers with a key
+    (or, for the generic slot, a custom base url like local Ollama) are included.
+    """
+    provs: list[_Provider] = []
+    if os.getenv("GEMINI_API_KEY"):
+        provs.append(_Provider(
+            "gemini",
+            os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai"),
+            os.getenv("GEMINI_API_KEY"),
+            os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+        ))
+    if os.getenv("GROQ_API_KEY"):
+        provs.append(_Provider(
+            "groq",
+            os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
+            os.getenv("GROQ_API_KEY"),
+            os.getenv("GROQ_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"),
+        ))
+    if os.getenv("OPENROUTER_API_KEY"):
+        provs.append(_Provider(
+            "openrouter",
+            os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+            os.getenv("OPENROUTER_API_KEY"),
+            os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.2-11b-vision-instruct:free"),
+            {"HTTP-Referer": os.getenv("OPENROUTER_REFERER", "https://localhost"),
+             "X-Title": "StoreIntelligence"},
+        ))
+    base, key = os.getenv("VLM_BASE_URL"), os.getenv("VLM_API_KEY")
+    if base or key:  # generic OpenAI / local Ollama (no key needed)
+        provs.append(_Provider(
+            "generic", base or "https://api.openai.com/v1", key or "",
+            os.getenv("VLM_MODEL", "gpt-4o-mini"),
+        ))
+    return provs
+
+
 class VLMClassifier:
-    """Optional vision-LLM classifier (OpenAI-compatible Chat Completions API).
+    """Optional vision-LLM camera classifier with a free, multi-provider fallback chain.
 
-    Works with hosted models (OpenAI/Groq/OpenRouter/Gemini) OR fully free & open-source
-    local models via Ollama — which needs no API key:
-        VLM_BASE_URL=http://localhost:11434/v1  VLM_MODEL=llama3.2-vision   (or llava,
-        moondream, qwen2.5vl). Active if VLM_API_KEY is set OR VLM_BASE_URL is overridden.
+    Configure any subset of: GEMINI_API_KEY, GROQ_API_KEY, OPENROUTER_API_KEY (free tiers),
+    or VLM_BASE_URL for local Ollama (llama3.2-vision / llava / moondream / qwen2.5vl).
+    Providers are tried in priority order until one returns a valid label.
 
-    Prompt (documented in DESIGN.md):
-        "You are labelling a retail CCTV still. Reply with exactly one word from
-         [entry, floor, billing, staff_area]: 'entry' if it shows a store
-         entrance/doorway/threshold, 'billing' if a checkout/cash counter, 'staff_area'
-         if a back-office/storeroom/employee area, otherwise 'floor'."
+    Prompt is module-level `PROMPT` (documented in DESIGN.md).
     """
 
-    PROMPT = (
-        "You are labelling a retail CCTV still. Reply with exactly one word from "
-        "[entry, floor, billing, staff_area]: 'entry' if it shows a store "
-        "entrance/doorway/threshold, 'billing' if a checkout/cash counter, 'staff_area' "
-        "if a back-office/storeroom/employee area, otherwise 'floor'."
-    )
+    PROMPT = PROMPT
 
     def __init__(self) -> None:
-        self.api_key = os.getenv("VLM_API_KEY", "")
-        self._base_override = os.getenv("VLM_BASE_URL", "")
-        self.base_url = self._base_override or "https://api.openai.com/v1"
-        self.model = os.getenv("VLM_MODEL", "gpt-4o-mini")
+        self.providers = _build_providers()
+        self.last_provider: Optional[str] = None
 
     @property
     def available(self) -> bool:
-        # a key (hosted) OR a custom base url (e.g. local Ollama, which needs no key)
-        return bool(self.api_key or self._base_override)
+        return bool(self.providers)
+
+    def classify_b64(self, image_b64: str) -> Optional[str]:
+        """Try each provider with a base64 JPEG until one returns a role."""
+        import requests
+
+        for p in self.providers:
+            try:
+                headers = {**p.extra_headers}
+                if p.api_key:
+                    headers["Authorization"] = f"Bearer {p.api_key}"
+                resp = requests.post(
+                    f"{p.base_url.rstrip('/')}/chat/completions",
+                    headers=headers,
+                    json={
+                        "model": p.model,
+                        "max_tokens": 4,
+                        "messages": [{"role": "user", "content": [
+                            {"type": "text", "text": self.PROMPT},
+                            {"type": "image_url",
+                             "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+                        ]}],
+                    },
+                    timeout=30,
+                )
+                word = resp.json()["choices"][0]["message"]["content"].strip().lower()
+                role = next((r for r in ROLES if r in word), None)
+                if role:
+                    self.last_provider = p.name
+                    return role
+            except Exception:
+                continue  # fall through to the next provider
+        return None
 
     def classify_frame(self, frame_bgr) -> Optional[str]:
         if not self.available:
@@ -82,29 +160,11 @@ class VLMClassifier:
             import base64
 
             import cv2
-            import requests
 
             ok, buf = cv2.imencode(".jpg", frame_bgr)
             if not ok:
                 return None
-            b64 = base64.b64encode(buf.tobytes()).decode()
-            headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
-            resp = requests.post(
-                f"{self.base_url.rstrip('/')}/chat/completions",
-                headers=headers,
-                json={
-                    "model": self.model,
-                    "max_tokens": 4,
-                    "messages": [{"role": "user", "content": [
-                        {"type": "text", "text": self.PROMPT},
-                        {"type": "image_url",
-                         "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
-                    ]}],
-                },
-                timeout=30,
-            )
-            word = resp.json()["choices"][0]["message"]["content"].strip().lower()
-            return next((r for r in ROLES if r in word), None)
+            return self.classify_b64(base64.b64encode(buf.tobytes()).decode())
         except Exception:
             return None
 
@@ -184,7 +244,7 @@ def auto_classify(source: str, vlm: Optional[VLMClassifier] = None) -> tuple[str
             if ok:
                 role = vlm.classify_frame(frame)
                 if role:
-                    return role, "vlm"
+                    return role, f"vlm:{vlm.last_provider}"
         except Exception:
             pass
     return _heuristic_role(source), "heuristic"
