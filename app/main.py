@@ -25,17 +25,24 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Retry DB init: on hosts like Railway the app can boot before Postgres is ready.
+    # Initialise the DB in the BACKGROUND so the app starts serving /health immediately
+    # (a cloud platform's health check must not wait on DB warm-up). Endpoints that need
+    # the DB degrade to 503 until init succeeds; /health stays available throughout.
     import asyncio
 
-    for attempt in range(1, 11):
-        try:
-            await init_db()
-            break
-        except SQLAlchemyError as exc:
-            LOG.error("db_init_retry", extra={"attempt": attempt, "error": str(exc)})
-            await asyncio.sleep(min(2 * attempt, 10))
+    async def _init_with_retry():
+        for attempt in range(1, 31):
+            try:
+                await init_db()
+                LOG.info("db_init_ok", extra={"attempt": attempt})
+                return
+            except SQLAlchemyError as exc:
+                LOG.error("db_init_retry", extra={"attempt": attempt, "error": str(exc)})
+                await asyncio.sleep(min(2 * attempt, 15))
+
+    task = asyncio.create_task(_init_with_retry())
     yield
+    task.cancel()
 
 
 app = FastAPI(
