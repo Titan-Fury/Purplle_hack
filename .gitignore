@@ -1,0 +1,55 @@
+# ---- Datasets / large media (challenge use only, never commit) ----
+*.mp4
+*.avi
+*.mov
+*.mkv
+CCTV Footage*/
+*.zip
+Purplle Tech Challenge*.pdf
+
+# ---- ML model weights / caches ----
+*.pt
+*.pth
+*.onnx
+*.engine
+weights/
+.cache/
+torchreid/
+
+# ---- Pipeline output (regenerated; can be large) ----
+pipeline/output/
+events_*.jsonl
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+
+# ---- Test / coverage ----
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.mypy_cache/
+.ruff_cache/
+
+# ---- Env / secrets ----
+.env
+*.env
+!.env.example
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ---- Docker volumes ----
+pgdata/

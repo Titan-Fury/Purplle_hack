@@ -1,0 +1,118 @@
+{
+  "_note": "PROVISIONAL layout — coordinates are normalized [0..1] (resolution-independent). Replace with the organizer's official store_layout.json from the Resources section when it arrives; the pipeline and API read this file by path, so no code changes are needed.",
+  "schema_version": "1.0",
+  "coordinate_system": "normalized",
+  "stores": [
+    {
+      "store_id": "STORE_BLR_002",
+      "city": "BLR",
+      "open_hours": {
+        "timezone": "Asia/Kolkata",
+        "weekly": {
+          "mon": "10:00-22:00",
+          "tue": "10:00-22:00",
+          "wed": "10:00-22:00",
+          "thu": "10:00-22:00",
+          "fri": "10:00-22:00",
+          "sat": "10:00-23:00",
+          "sun": "10:00-23:00"
+        }
+      },
+      "cameras": [
+        {
+          "camera_id": "CAM_ENTRY_01",
+          "role": "entry",
+          "source": "CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage/CAM 1.mp4",
+          "frame": { "width": 1920, "height": 1080, "fps": 15 },
+          "entry_line": { "x1": 0.0, "y1": 0.55, "x2": 1.0, "y2": 0.55 },
+          "inbound_direction": "down",
+          "covers_zones": ["ENTRANCE"],
+          "overlaps_with": ["CAM_FLOOR_03"]
+        },
+        {
+          "camera_id": "CAM_FLOOR_01",
+          "role": "floor",
+          "source": "CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage/CAM 2.mp4",
+          "frame": { "width": 1920, "height": 1080, "fps": 15 },
+          "covers_zones": ["SKINCARE", "MAKEUP"],
+          "overlaps_with": []
+        },
+        {
+          "camera_id": "CAM_FLOOR_02",
+          "role": "floor",
+          "source": "CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage/CAM 3.mp4",
+          "frame": { "width": 1920, "height": 1080, "fps": 15 },
+          "covers_zones": ["FRAGRANCE", "HAIRCARE"],
+          "overlaps_with": []
+        },
+        {
+          "camera_id": "CAM_BILLING_01",
+          "role": "billing",
+          "source": "CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage/CAM 4.mp4",
+          "frame": { "width": 1920, "height": 1080, "fps": 15 },
+          "covers_zones": ["BILLING"],
+          "overlaps_with": []
+        },
+        {
+          "camera_id": "CAM_FLOOR_03",
+          "role": "floor",
+          "source": "CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage/CAM 5.mp4",
+          "frame": { "width": 1920, "height": 1080, "fps": 15 },
+          "covers_zones": ["WELLNESS"],
+          "overlaps_with": ["CAM_ENTRY_01"]
+        }
+      ],
+      "zones": [
+        {
+          "zone_id": "ENTRANCE",
+          "sku_zone": null,
+          "is_billing": false,
+          "camera_id": "CAM_ENTRY_01",
+          "polygon": [[0.0, 0.45], [1.0, 0.45], [1.0, 0.75], [0.0, 0.75]]
+        },
+        {
+          "zone_id": "SKINCARE",
+          "sku_zone": "MOISTURISER",
+          "is_billing": false,
+          "camera_id": "CAM_FLOOR_01",
+          "polygon": [[0.02, 0.20], [0.48, 0.20], [0.48, 0.95], [0.02, 0.95]]
+        },
+        {
+          "zone_id": "MAKEUP",
+          "sku_zone": "LIPSTICK",
+          "is_billing": false,
+          "camera_id": "CAM_FLOOR_01",
+          "polygon": [[0.52, 0.20], [0.98, 0.20], [0.98, 0.95], [0.52, 0.95]]
+        },
+        {
+          "zone_id": "FRAGRANCE",
+          "sku_zone": "PERFUME",
+          "is_billing": false,
+          "camera_id": "CAM_FLOOR_02",
+          "polygon": [[0.02, 0.20], [0.48, 0.20], [0.48, 0.95], [0.02, 0.95]]
+        },
+        {
+          "zone_id": "HAIRCARE",
+          "sku_zone": "SHAMPOO",
+          "is_billing": false,
+          "camera_id": "CAM_FLOOR_02",
+          "polygon": [[0.52, 0.20], [0.98, 0.20], [0.98, 0.95], [0.52, 0.95]]
+        },
+        {
+          "zone_id": "WELLNESS",
+          "sku_zone": "SUPPLEMENTS",
+          "is_billing": false,
+          "camera_id": "CAM_FLOOR_03",
+          "polygon": [[0.10, 0.15], [0.90, 0.15], [0.90, 0.95], [0.10, 0.95]]
+        },
+        {
+          "zone_id": "BILLING",
+          "sku_zone": null,
+          "is_billing": true,
+          "camera_id": "CAM_BILLING_01",
+          "polygon": [[0.15, 0.25], [0.85, 0.25], [0.85, 0.95], [0.15, 0.95]]
+        }
+      ]
+    }
+  ]
+}

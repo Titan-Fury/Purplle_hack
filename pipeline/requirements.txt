@@ -1,0 +1,11 @@
+# ---- Detection pipeline (run on host with GPU; NOT in the API image) ----
+# Install torch/torchvision matching your CUDA build first, e.g.:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+ultralytics==8.3.58          # YOLOv8 + built-in ByteTrack tracker
+opencv-python==4.10.0.84
+numpy==2.1.3
+shapely==2.0.6               # polygon zone hit-testing
+scipy==1.14.1                # Hungarian matching for Re-ID association
+requests==2.32.3             # stream events into the API
+rich==13.9.4                 # optional terminal progress
+torchreid==0.2.5             # OSNet appearance Re-ID (optional; degrades gracefully if absent)
