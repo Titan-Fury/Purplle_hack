@@ -34,7 +34,7 @@ class PipelineConfig:
     conf_threshold: float = _f("YOLO_CONF", 0.25)  # low: keep low-conf, do not suppress
     iou_threshold: float = _f("YOLO_IOU", 0.5)
     tracker_cfg: str = os.getenv("TRACKER_CFG", "bytetrack.yaml")
-    frame_stride: int = _i("FRAME_STRIDE", 1)  # process every Nth frame for speed
+    frame_stride: int = _i("FRAME_STRIDE", 2)  # decode every Nth frame (vid_stride) for speed
 
     # ---- behavioural rules ----
     dwell_emit_interval_s: int = _i("DWELL_EMIT_INTERVAL_S", 30)
@@ -47,6 +47,7 @@ class PipelineConfig:
     staff_min_zones: int = _i("STAFF_MIN_ZONES", 4)
     staff_min_presence_s: float = _f("STAFF_MIN_PRESENCE_S", 240.0)
     staff_min_entry_crossings: int = _i("STAFF_MIN_ENTRY_CROSSINGS", 3)
+    staff_dwell_ms: int = _i("STAFF_DWELL_MS", 60000)  # 60s+ continuous in one zone -> staff (counter/till)
 
     # ---- re-id ----
     reid_match_threshold: float = _f("REID_MATCH_THRESHOLD", 0.55)  # cosine distance (OSNet)

@@ -33,18 +33,26 @@ class _Embedder:
         self._cnn_tf = None
         self._device = None
         self._mode = "histogram"
-        # 1) best: OSNet via torchreid (if installed)
-        try:
-            from torchreid.utils import FeatureExtractor  # type: ignore
-
-            self._extractor = FeatureExtractor(
-                model_name="osnet_x0_25",
-                device=CONFIG.device or "cuda",
-            )
-            self._mode = "osnet"
-            return
-        except Exception:
-            self._extractor = None
+        # 1) best: OSNet via torchreid (purpose-built person Re-ID). Import path differs
+        #    across torchreid versions, so try the known locations.
+        FeatureExtractor = None
+        for _path in ("torchreid.reid.utils.feature_extractor", "torchreid.utils"):
+            try:
+                _mod = __import__(_path, fromlist=["FeatureExtractor"])
+                FeatureExtractor = getattr(_mod, "FeatureExtractor")
+                break
+            except Exception:
+                continue
+        if FeatureExtractor is not None:
+            try:
+                self._extractor = FeatureExtractor(
+                    model_name="osnet_x0_25",
+                    device=CONFIG.device or "cuda",
+                )
+                self._mode = "osnet"
+                return
+            except Exception:
+                self._extractor = None
         # 2) good: a torchvision CNN backbone (no torchreid build needed, GPU-ready)
         try:
             self._init_cnn()

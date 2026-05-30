@@ -193,6 +193,11 @@ class StoreTracker:
             since_emit = ts - (st.last_dwell_emit_at or st.zone_entered_at)
             if since_emit >= CONFIG.dwell_emit_interval_s:
                 dwell = int((ts - st.zone_entered_at) * 1000)
+                # a person standing 90s+ continuously in one zone is almost certainly
+                # staff (counter/till); flag and propagate via the gallery.
+                if dwell >= CONFIG.staff_dwell_ms and not st.is_staff:
+                    st.is_staff = True
+                    self.gallery.mark_staff(st.visitor_id)
                 self._emit(st, camera_id, "ZONE_DWELL", zid, dwell, confidence, ts,
                            sku=zone.sku_zone)
                 st.last_dwell_emit_at = ts

@@ -9,3 +9,5 @@ scipy==1.14.1                # Hungarian matching for Re-ID association
 requests==2.32.3             # stream events into the API
 rich==13.9.4                 # optional terminal progress
 torchreid==0.2.5             # OSNet appearance Re-ID (optional; degrades gracefully if absent)
+tensorboard                  # torchreid import dependency
+gdown                        # torchreid weight download

@@ -28,6 +28,7 @@ def process_camera(
     from ultralytics import YOLO
 
     model = YOLO(CONFIG.model_weights)
+    stride = max(1, CONFIG.frame_stride)
     stream = model.track(
         source=cam.source,
         stream=True,
@@ -37,20 +38,19 @@ def process_camera(
         conf=CONFIG.conf_threshold,
         iou=CONFIG.iou_threshold,
         device=CONFIG.device or None,
+        vid_stride=stride,   # decode-level frame skipping -> real speedup
         verbose=False,
     )
 
     fps = cam.fps or 15.0
-    frame_idx = 0
+    step = 0          # number of processed (yielded) frames
     wall_start = time.time()
 
     for result in stream:
-        if CONFIG.frame_stride > 1 and frame_idx % CONFIG.frame_stride:
-            frame_idx += 1
-            continue
-
-        ts_epoch = clip_start_epoch + frame_idx / fps
-        if max_seconds is not None and (frame_idx / fps) > max_seconds:
+        # with vid_stride, each yielded frame advances real time by stride/fps
+        elapsed = step * stride / fps
+        ts_epoch = clip_start_epoch + elapsed
+        if max_seconds is not None and elapsed > max_seconds:
             break
 
         h, w = result.orig_shape if hasattr(result, "orig_shape") else (cam.height, cam.width)
@@ -71,12 +71,12 @@ def process_camera(
                 tracker.update(cam.camera_id, int(tid), cx, cy, float(conf), crop, ts_epoch)
 
         tracker.flush_lost(ts_epoch)
-        frame_idx += 1
+        step += 1
 
         if realtime:
-            target = wall_start + frame_idx / fps
+            target = wall_start + step * stride / fps
             sleep = target - time.time()
             if sleep > 0:
                 time.sleep(sleep)
 
-    return frame_idx
+    return step
