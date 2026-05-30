@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 
+from .camera_resolver import resolve_role
 from .config import CONFIG
 from .detect import process_camera
 from .emit import EventEmitter
@@ -30,7 +31,7 @@ def _parse_epoch(iso: str) -> float:
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Apex Store Intelligence detection pipeline")
-    p.add_argument("--store", default="STORE_BLR_002")
+    p.add_argument("--store", default="ST1008")
     p.add_argument("--layout", default=CONFIG.store_layout_path)
     p.add_argument("--out", default="")
     p.add_argument("--api-url", default=CONFIG.api_url)
@@ -38,12 +39,21 @@ def main() -> None:
     p.add_argument("--realtime", action="store_true")
     p.add_argument("--max-seconds", type=float, default=None)
     p.add_argument("--cameras", nargs="*", default=None, help="subset of camera_ids")
+    p.add_argument("--resolve-mode", choices=["registry", "auto"], default="registry",
+                   help="registry: trust store_layout roles; auto: fall back to convention/VLM")
     args = p.parse_args()
 
     layouts = load_layout(args.layout)
     if args.store not in layouts:
         raise SystemExit(f"store {args.store} not in {args.layout}")
     layout = layouts[args.store]
+
+    # Resolve/confirm each camera's role (registry -> convention -> auto-classify).
+    for cam in layout.cameras.values():
+        role, method = resolve_role(cam.camera_id, cam.source, layout, mode=args.resolve_mode)
+        if method != "registry":
+            print(f"[pipeline] {cam.camera_id}: role '{role}' resolved by {method}")
+        cam.role = role
 
     out = args.out or f"{CONFIG.output_dir}/events_{args.store}.jsonl"
     clip_start = _parse_epoch(args.clip_start)

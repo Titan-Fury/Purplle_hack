@@ -98,10 +98,18 @@ class ReIDGallery:
     def __init__(self) -> None:
         self._embedder = _Embedder()
         self._entries: dict[str, GalleryEntry] = {}
+        self._staff: set[str] = set()
 
     @property
     def mode(self) -> str:
         return self._embedder.mode
+
+    def mark_staff(self, visitor_id: str) -> None:
+        """Flag a visitor as staff (e.g. seen in a back-of-house camera). Sticky."""
+        self._staff.add(visitor_id)
+
+    def is_staff(self, visitor_id: str) -> bool:
+        return visitor_id in self._staff
 
     def embed(self, crop: np.ndarray) -> Optional[np.ndarray]:
         return self._embedder(crop)

@@ -74,6 +74,10 @@ class StoreTracker:
     def _classify_staff(self, st: TrackState) -> bool:
         if st.is_staff:
             return True
+        # seen in a back-of-house camera at any point -> staff (via Re-ID gallery)
+        if self.gallery.is_staff(st.visitor_id):
+            st.is_staff = True
+            return True
         presence = st.last_seen - st.first_seen
         st.is_staff = (
             len(st.zones_visited) >= CONFIG.staff_min_zones
@@ -110,6 +114,15 @@ class StoreTracker:
             st._pending_reentry = is_reentry  # type: ignore[attr-defined]
 
         st.last_seen = ts
+
+        # Back-of-house camera: anyone here is staff. Flag the visitor (sticky, and
+        # propagated to other cameras via the shared Re-ID gallery) and emit no
+        # customer events from this feed.
+        if cam.role == "staff_area":
+            self.gallery.mark_staff(st.visitor_id)
+            st.is_staff = True
+            return
+
         self._classify_staff(st)
 
         if cam.role == "entry" and cam.entry_line:
