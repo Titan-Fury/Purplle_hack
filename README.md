@@ -87,9 +87,11 @@ The live demo is seeded from a real pipeline run on the Brigade Road clips
   the billing visits captured in this 2.5-minute clip. The system deliberately attributes
   **no false conversions**; on a window containing in-window purchases it reports non-zero.
 - **Entry counts are approximate** — the entry camera is an oblique, glare-heavy glass-door
-  view, so the line-crossing count (~8 / 2.5 min) is a reasonable estimate, not ground truth.
-- Re-ID uses a torchvision ResNet18 embedding on GPU (OSNet optional), which deduplicated
-  the same shopper across cameras and brought unique visitors from 46 to 23.
+  view, so the line-crossing count (~6 / 2.5 min) is a reasonable estimate, not ground truth.
+- Re-ID uses **OSNet** (torchreid, GPU) with torchvision ResNet18 / histogram fallbacks; it
+  deduplicated shoppers across cameras down to **14 visitors**, of which **2 were flagged
+  staff** (60s+ stationary dwell / back-of-house) and excluded, leaving 12 customers, plus
+  one real `REENTRY`. Detection runs at `vid_stride=2` for efficiency.
 
 ---
 

@@ -57,19 +57,23 @@ The system was run end-to-end on the real Brigade Road (ST1008) footage. Honest 
 * **Footage reality vs. brief:** clips are 30/25 fps and ~2.5 min (not 15 fps / 20 min as
   the brief stated); the on-screen timestamps anchor the recording to ~20:10 IST,
   10 Apr 2026, which is what `--clip-start` is set to so POS correlation lines up.
-* **Re-ID is 3-tier and degrades gracefully:** OSNet (torchreid) → a torchvision ResNet18
-  embedding (used here, GPU) → an HSV histogram. The CNN tier cut duplicate visitor_ids
-  roughly in half (46→23) by deduplicating the same person across the entry/floor cameras.
+* **Re-ID is 3-tier and degrades gracefully:** OSNet (torchreid, **active in the real run**,
+  GPU) → a torchvision ResNet18 embedding → an HSV histogram. OSNet brought unique
+  visitors from 46 (histogram) to **14**, deduplicating the same shopper across the
+  entry/floor cameras (and surfacing a real `REENTRY`).
+* **Staff now firing:** the back-of-house CAM 4 oracle plus a "60s+ continuous single-zone
+  dwell ⇒ staff (counter/till)" rule flag **2 staff**, who the API excludes at the
+  *visitor* level (any staff event drops the whole visitor) — leaving 12 customers.
+* **Efficiency:** detection runs at `vid_stride=2` (decode every other frame), roughly
+  halving GPU work with negligible impact on counts; Re-ID embeddings are computed once per
+  track (at birth), not per frame.
 * **Conversion = 0 on the demo clip is correct, not a bug.** The POS has a purchase lull
   from 19:54→20:25 IST; the 2.5-min clip window (≈20:09–20:12) contains no transaction
   within the 5-minute correlation window, so the system correctly attributes *no* false
   conversions. On a longer window with in-window purchases it produces non-zero conversion.
 * **Entry counts are approximate.** The entry camera is an oblique, glare-heavy glass-door
   view with a poorly-lit mall side; the entry line + hysteresis give a plausible count
-  (~8 entries / 2.5 min) but are not validated against frame-by-frame ground truth.
-* **Back-of-house staff:** anyone seen only on CAM 4 emits no customer events at all, so
-  they never pollute customer metrics; the Re-ID staff flag additionally propagates to
-  any such person who also walks the floor.
+  (~6 entries / 2.5 min) but are not validated against frame-by-frame ground truth.
 
 ## AI-Assisted Decisions
 

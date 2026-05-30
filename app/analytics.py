@@ -40,14 +40,19 @@ async def resolve_window(
 
 
 async def _fetch(session, store_id, start, end, include_staff=False) -> list[EventRow]:
+    """Fetch events in the window. By default excludes staff at the *visitor* level:
+    if any of a visitor's events is is_staff=true, the whole visitor is dropped (more
+    correct than per-event filtering, since the staff flag can be set mid-session)."""
     stmt = select(EventRow).where(
         EventRow.store_id == store_id,
         EventRow.timestamp >= start,
         EventRow.timestamp < end,
     )
-    if not include_staff:
-        stmt = stmt.where(EventRow.is_staff.is_(False))
-    return list((await session.execute(stmt)).scalars().all())
+    rows = list((await session.execute(stmt)).scalars().all())
+    if include_staff:
+        return rows
+    staff_visitors = {e.visitor_id for e in rows if e.is_staff}
+    return [e for e in rows if e.visitor_id not in staff_visitors]
 
 
 def _billing_presence(events, billing_zones) -> list[tuple[str, datetime]]:

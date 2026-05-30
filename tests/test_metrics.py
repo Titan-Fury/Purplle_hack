@@ -28,6 +28,17 @@ async def test_staff_excluded_from_metrics(client):
     assert m["staff_excluded"] is True
 
 
+async def test_staff_excluded_at_visitor_level(client):
+    # a visitor flagged staff only partway through must be excluded entirely
+    await _ingest(client, [
+        make_event("ENTRY", "VIS_S", is_staff=False),                 # early event, not yet flagged
+        make_event("ZONE_DWELL", "VIS_S", "MAKEUP", dwell_ms=95000, is_staff=True),  # now staff
+        make_event("ENTRY", "VIS_REAL"),
+    ])
+    m = (await client.get(f"/stores/{STORE}/metrics{DATE}")).json()
+    assert m["unique_visitors"] == 1  # only VIS_REAL; VIS_S dropped despite an unflagged event
+
+
 async def test_zero_purchase_store(client):
     # visitor browses but never near a POS transaction -> conversion 0, no crash
     await _ingest(client, [
