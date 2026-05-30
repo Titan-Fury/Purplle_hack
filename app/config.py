@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     # file. Lets a cloud deploy show real data without keeping a GPU online. Off by
     # default so a grader's local `docker compose up` starts clean for held-out tests.
     seed_on_start: bool = False
-    seed_file: str = "data/sample_events.jsonl"
+    seed_file: str = "data/seed_events_ST1008.jsonl"
 
     # business-rule windows (seconds)
     session_window_s: int = 3600
