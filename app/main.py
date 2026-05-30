@@ -35,6 +35,7 @@ async def lifespan(app: FastAPI):
             try:
                 await init_db()
                 LOG.info("db_init_ok", extra={"attempt": attempt})
+                await _maybe_seed()
                 return
             except SQLAlchemyError as exc:
                 LOG.error("db_init_retry", extra={"attempt": attempt, "error": str(exc)})
@@ -43,6 +44,30 @@ async def lifespan(app: FastAPI):
     task = asyncio.create_task(_init_with_retry())
     yield
     task.cancel()
+
+
+async def _maybe_seed() -> None:
+    """If enabled and the events table is empty, ingest the configured seed file once."""
+    import json
+    import os
+
+    from sqlalchemy import func, select
+
+    from .db import EventRow, SessionLocal
+    from .ingestion import ingest_events
+
+    if not settings.seed_on_start or not os.path.exists(settings.seed_file):
+        return
+    async with SessionLocal() as session:
+        count = (await session.execute(select(func.count()).select_from(EventRow))).scalar_one()
+        if count:
+            return
+        events = [json.loads(line) for line in open(settings.seed_file, encoding="utf-8") if line.strip()]
+        total = 0
+        for i in range(0, len(events), 500):
+            res = await ingest_events(session, events[i:i + 500])
+            total += res.accepted
+        LOG.info("seeded_events", extra={"file": settings.seed_file, "accepted": total})
 
 
 app = FastAPI(

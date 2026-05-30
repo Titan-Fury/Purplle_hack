@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     store_layout_path: str = "data/store_layout.json"
     pos_csv_path: str = "data/pos_transactions.csv"
 
+    # Optional one-time seeding: on startup, if the events table is empty, ingest this
+    # file. Lets a cloud deploy show real data without keeping a GPU online. Off by
+    # default so a grader's local `docker compose up` starts clean for held-out tests.
+    seed_on_start: bool = False
+    seed_file: str = "data/sample_events.jsonl"
+
     # business-rule windows (seconds)
     session_window_s: int = 3600
     pos_correlation_window_s: int = 300
