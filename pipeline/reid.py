@@ -29,7 +29,11 @@ class _Embedder:
 
     def __init__(self) -> None:
         self._extractor = None
+        self._cnn = None
+        self._cnn_tf = None
+        self._device = None
         self._mode = "histogram"
+        # 1) best: OSNet via torchreid (if installed)
         try:
             from torchreid.utils import FeatureExtractor  # type: ignore
 
@@ -38,8 +42,34 @@ class _Embedder:
                 device=CONFIG.device or "cuda",
             )
             self._mode = "osnet"
+            return
         except Exception:
-            self._extractor = None  # fall back silently to histogram
+            self._extractor = None
+        # 2) good: a torchvision CNN backbone (no torchreid build needed, GPU-ready)
+        try:
+            self._init_cnn()
+            self._mode = "cnn"
+        except Exception:
+            self._cnn = None  # 3) fall back to HSV histogram
+
+    def _init_cnn(self) -> None:
+        import torch
+        import torchvision.transforms as T
+        from torchvision.models import ResNet18_Weights, resnet18
+
+        self._device = (
+            CONFIG.device or ("cuda" if torch.cuda.is_available() else "cpu")
+        )
+        net = resnet18(weights=ResNet18_Weights.DEFAULT)
+        net.fc = torch.nn.Identity()  # 512-d appearance embedding from avgpool
+        net.eval().to(self._device)
+        self._cnn = net
+        self._cnn_tf = T.Compose([
+            T.ToPILImage(),
+            T.Resize((256, 128)),  # person aspect ratio
+            T.ToTensor(),
+            T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
 
     @property
     def mode(self) -> str:
@@ -51,6 +81,18 @@ class _Embedder:
         if self._extractor is not None:
             try:
                 feat = self._extractor(crop).cpu().numpy().reshape(-1)
+                return _l2(feat)
+            except Exception:
+                pass
+        if self._cnn is not None:
+            try:
+                import cv2
+                import torch
+
+                rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+                with torch.no_grad():
+                    x = self._cnn_tf(rgb).unsqueeze(0).to(self._device)
+                    feat = self._cnn(x).cpu().numpy().reshape(-1)
                 return _l2(feat)
             except Exception:
                 pass  # degrade to histogram for this crop
@@ -136,9 +178,10 @@ class ReIDGallery:
             stricter distance than OSNet embeddings.
         """
         self._evict(now)
-        threshold = (
-            CONFIG.reid_match_threshold if self.mode == "osnet" else CONFIG.reid_hist_threshold
-        )
+        threshold = {
+            "osnet": CONFIG.reid_match_threshold,
+            "cnn": CONFIG.reid_cnn_threshold,
+        }.get(self.mode, CONFIG.reid_hist_threshold)
         best_vid, best_dist = None, 1.0
         if embedding is not None:
             for vid, e in self._entries.items():

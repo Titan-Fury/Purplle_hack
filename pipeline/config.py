@@ -50,6 +50,7 @@ class PipelineConfig:
 
     # ---- re-id ----
     reid_match_threshold: float = _f("REID_MATCH_THRESHOLD", 0.55)  # cosine distance (OSNet)
+    reid_cnn_threshold: float = _f("REID_CNN_THRESHOLD", 0.30)      # torchvision CNN embedding
     reid_hist_threshold: float = _f("REID_HIST_THRESHOLD", 0.12)    # stricter for histogram
     reid_coexist_window_s: float = _f("REID_COEXIST_WINDOW_S", 1.5)  # active -> can't be same person
     reid_gallery_ttl_s: float = _f("REID_GALLERY_TTL_S", 900.0)

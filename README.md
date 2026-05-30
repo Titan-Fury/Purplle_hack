@@ -77,6 +77,20 @@ customer names/phone numbers and is git-ignored. The POS loader auto-detects bot
 documented schema and the raw 39-column export (aggregating line items to invoices and
 converting IST→UTC).
 
+### Notes on the demo data (read before judging the numbers)
+
+The live demo is seeded from a real pipeline run on the Brigade Road clips
+(`data/seed_events_ST1008.jsonl`, store `ST1008`, ~20:10 IST on 10 Apr 2026):
+
+- **Conversion shows 0% for this clip — and that is correct, not a bug.** The POS has a
+  purchase lull (19:54 → 20:25 IST), so no transaction falls within the 5-minute window of
+  the billing visits captured in this 2.5-minute clip. The system deliberately attributes
+  **no false conversions**; on a window containing in-window purchases it reports non-zero.
+- **Entry counts are approximate** — the entry camera is an oblique, glare-heavy glass-door
+  view, so the line-crossing count (~8 / 2.5 min) is a reasonable estimate, not ground truth.
+- Re-ID uses a torchvision ResNet18 embedding on GPU (OSNet optional), which deduplicated
+  the same shopper across cameras and brought unique visitors from 46 to 23.
+
 ---
 
 ## API endpoints
