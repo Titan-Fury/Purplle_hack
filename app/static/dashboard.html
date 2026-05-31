@@ -25,14 +25,8 @@
   @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(12vw,8vh) scale(1.15)}}
   @keyframes drift2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-11vw,10vh) scale(.9)}}
   @keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(9vw,-10vh) scale(1.12)}}
-  #bg{position:fixed; inset:0; z-index:0; display:block}
-  .orbs{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-  .orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.4;will-change:transform;transition:transform .12s ease-out}
-  .o1{width:440px;height:440px;left:-90px;top:-70px;background:radial-gradient(circle,#7c83ff,transparent 70%)}
-  .o2{width:560px;height:560px;right:-140px;top:8%;background:radial-gradient(circle,#22d3ee,transparent 70%)}
-  .o3{width:380px;height:380px;left:28%;bottom:-140px;background:radial-gradient(circle,#a855f7,transparent 70%)}
-  .o4{width:320px;height:320px;right:18%;bottom:4%;background:radial-gradient(circle,#34d399,transparent 70%)}
-  .wrap{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 22px 90px; perspective:1700px}
+  #bg{position:fixed; inset:0; z-index:0; display:block; opacity:.7}
+  .wrap{position:relative; z-index:1; max-width:1160px; margin:0 auto; padding:26px 24px 96px; perspective:1700px}
   .scene{transform-style:preserve-3d; transition:transform .25s ease-out; will-change:transform}
 
   header{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:22px}
@@ -75,13 +69,20 @@
     background:linear-gradient(140deg,rgba(124,131,255,.55),transparent 38%,transparent 62%,rgba(34,211,238,.45));
     -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
     mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}
+  /* glossy reflection sweep on hover (clipped by card overflow:hidden) */
+  .card::after{content:"";position:absolute;top:0;left:0;width:60%;height:100%;border-radius:inherit;pointer-events:none;
+    background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.16) 50%,transparent 65%);
+    transform:translateX(-170%);transition:transform .8s cubic-bezier(.22,1,.36,1)}
+  .card:hover::after{transform:translateX(330%)}
   @keyframes rise{to{opacity:1}}
-  .card:hover{box-shadow:0 28px 64px rgba(124,131,255,.30), 0 0 0 1px rgba(34,211,238,.28), inset 0 1px 0 rgba(255,255,255,.18)}
+  .card:hover{transform:translateY(-5px);
+    box-shadow:0 30px 64px rgba(124,131,255,.30), 0 0 0 1px rgba(34,211,238,.28), inset 0 1px 0 rgba(255,255,255,.18)}
   /* floating KPI widgets (staggered, like the reference mockups) */
-  .kpis .card{animation:rise .6s forwards, floatk 7.5s ease-in-out infinite;animation-delay:0s,var(--fd,0s)}
-  .kpis .card:nth-child(1){--fd:-0s}.kpis .card:nth-child(2){--fd:-1.4s}
-  .kpis .card:nth-child(3){--fd:-2.8s}.kpis .card:nth-child(4){--fd:-4.2s}.kpis .card:nth-child(5){--fd:-5.6s}
-  @keyframes floatk{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  .kpis .card{animation:rise .6s forwards, floatk 9s ease-in-out infinite;animation-delay:0s,var(--fd,0s)}
+  .kpis .card:hover{animation-play-state:paused,paused}
+  .kpis .card:nth-child(1){--fd:-0s}.kpis .card:nth-child(2){--fd:-1.8s}
+  .kpis .card:nth-child(3){--fd:-3.6s}.kpis .card:nth-child(4){--fd:-5.4s}.kpis .card:nth-child(5){--fd:-7.2s}
+  @keyframes floatk{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
   .kpi .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
   .kpi .value{font-size:34px;font-weight:800;margin-top:8px;line-height:1;
     background:linear-gradient(90deg,#fff,#9ad8ff 60%,#c4b5ff);-webkit-background-clip:text;background-clip:text;color:transparent;
@@ -137,12 +138,6 @@
 </head>
 <body>
 <div class="aurora"><i class="a1"></i><i class="a2"></i><i class="a3"></i></div>
-<div class="orbs">
-  <span class="orb o1" data-depth="0.025"></span>
-  <span class="orb o2" data-depth="0.055"></span>
-  <span class="orb o3" data-depth="0.085"></span>
-  <span class="orb o4" data-depth="0.04"></span>
-</div>
 <canvas id="bg"></canvas>
 <div class="wrap">
   <header>
@@ -179,33 +174,27 @@
 </div>
 
 <script>
-/* ---------- mouse + scroll parallax (layered depth) ---------- */
-const orbEls = [...document.querySelectorAll('.orb')];
+/* ---------- mouse parallax: rAF-throttled isometric scene tilt ---------- */
 const sceneEl = document.getElementById('scene');
-let pmx = 0, pmy = 0, psy = 0;
-function applyParallax(){
-  for(const o of orbEls){
-    const d = parseFloat(o.dataset.depth) || 0.04;
-    const tx = pmx * d * 900, ty = pmy * d * 900 - psy * d * 6;
-    o.style.transform = `translate3d(${tx}px,${ty}px,0)`;
-  }
-  // isometric scene tilt — the whole grid leans toward the cursor in 3D
-  if(sceneEl) sceneEl.style.transform = `rotateX(${(-pmy*5).toFixed(2)}deg) rotateY(${(pmx*6).toFixed(2)}deg)`;
+let pmx = 0, pmy = 0, tiltQueued = false;
+function applyTilt(){
+  tiltQueued = false;
+  if(sceneEl) sceneEl.style.transform = `rotateX(${(-pmy*4).toFixed(2)}deg) rotateY(${(pmx*5).toFixed(2)}deg)`;
 }
+function queueTilt(){ if(!tiltQueued){ tiltQueued = true; requestAnimationFrame(applyTilt); } }
 addEventListener('mousemove', e => {
-  pmx = e.clientX/innerWidth - .5; pmy = e.clientY/innerHeight - .5; applyParallax();
-});
-addEventListener('scroll', () => { psy = scrollY; applyParallax(); }, {passive:true});
+  pmx = e.clientX/innerWidth - .5; pmy = e.clientY/innerHeight - .5; queueTilt();
+}, {passive:true});
 
 /* ---------- interactive particle-network background ---------- */
 const cv = document.getElementById('bg'), cx = cv.getContext('2d');
 let W, H, DPR, parts = [], ripples = [];
 const mouse = {x:-9999, y:-9999};
 function resize(){
-  DPR = Math.min(window.devicePixelRatio||1, 2);
+  DPR = Math.min(window.devicePixelRatio||1, 1.5);
   W = cv.width = innerWidth*DPR; H = cv.height = innerHeight*DPR;
   cv.style.width = innerWidth+'px'; cv.style.height = innerHeight+'px';
-  const n = Math.min(110, Math.floor(innerWidth*innerHeight/14000));
+  const n = Math.min(80, Math.floor(innerWidth*innerHeight/20000));
   parts = Array.from({length:n}, () => ({
     x:Math.random()*W, y:Math.random()*H,
     vx:(Math.random()-.5)*.25*DPR, vy:(Math.random()-.5)*.25*DPR
@@ -251,19 +240,6 @@ function frame(){
 }
 frame();
 
-/* ---------- 3D card tilt on hover ---------- */
-function bindTilt(){
-  document.querySelectorAll('.card').forEach(card => {
-    if(card._tilt) return; card._tilt = true;
-    card.addEventListener('mousemove', e => {
-      const r = card.getBoundingClientRect();
-      const px = (e.clientX - r.left)/r.width - .5, py = (e.clientY - r.top)/r.height - .5;
-      card.style.transform = `rotateY(${px*6}deg) rotateX(${-py*6}deg) translateZ(8px)`;
-    });
-    card.addEventListener('mouseleave', () => { card.style.transform = ''; });
-  });
-}
-
 /* ---------- button ripple ---------- */
 function rippleBtn(btn){
   btn.addEventListener('click', e => {
@@ -297,7 +273,7 @@ function buildKpis(){
     kpiCard('k_buy','Purchases','POS-correlated') +
     kpiCard('k_q','Queue','current / peak') +
     kpiCard('k_ab','Abandonment','left billing, no buy');
-  built=true; bindTilt();
+  built=true;
 }
 
 /* zone heatmap rendered on the store floor-plan polygons */
@@ -402,7 +378,7 @@ $('live').addEventListener('click', ()=>{
 
 /* ---------- camera-feed video panel (local only; hidden if file absent) ---------- */
 fetch('/static/demo.mp4', {method:'HEAD'}).then(r=>{
-  if(r.ok){ $('demoVid').src='/static/demo.mp4'; $('videoCard').style.display=''; bindTilt(); }
+  if(r.ok){ $('demoVid').src='/static/demo.mp4'; $('videoCard').style.display=''; }
 }).catch(()=>{});
 
 rippleBtn($('refresh')); rippleBtn($('live'));
