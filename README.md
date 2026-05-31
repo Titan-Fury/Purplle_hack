@@ -20,14 +20,30 @@ docker compose up --build -d
 # 3. confirm it is live
 curl http://localhost:8000/health
 
-# 4. replay a sample event stream in simulated real time (no GPU required)
-python -m dashboard.replay --events data/sample_events.jsonl --api-url http://localhost:8000 --speed 30
+# 4. replay the real event stream in simulated real time (no GPU required)
+python -m pipeline.replay --api http://localhost:8000 --speed 20
 
-# 5. open the live dashboard
+# 5. open the live dashboard and click "▶ Live Replay"
 #    http://localhost:8000/dashboard
 ```
 
 The API is at `http://localhost:8000`, interactive docs at `/docs`, dashboard at `/dashboard`.
+
+### Live dashboard demo (Part E)
+
+The replay streams the committed events into the API **in clip-time order** onto a separate
+`ST1008_LIVE` store, so the dashboard's visitors / funnel / queue **climb live** — proof the
+pipeline → API → dashboard are genuinely connected, not batch-loaded. Click **▶ Live Replay**
+in the header (it switches to `ST1008_LIVE` and polls every second), then run step 4.
+
+Optional **camera-feed panel** (local only): the annotated clip contains the CCTV footage,
+which the licence forbids publishing, so it is **never committed**. Generate it locally and the
+dashboard will show it automatically:
+
+```bash
+python -m pipeline.annotate --store ST1008 --camera CAM_ENTRY_01 --seconds 40
+#  -> writes app/static/demo.mp4 (gitignored); refresh the dashboard to see the panel
+```
 
 ---
 
@@ -107,6 +123,9 @@ The live demo is seeded from a real pipeline run on the Brigade Road clips
 | GET | `/stores/{id}/funnel` | Entry → Zone → Billing → Purchase with drop-off % (session-based) |
 | GET | `/stores/{id}/heatmap` | Zone visit/dwell normalised 0–100, `data_confidence` flag |
 | GET | `/stores/{id}/anomalies` | Queue spike, conversion drop, dead zone (INFO/WARN/CRITICAL) |
+| GET | `/stores/{id}/events` | Recent events, newest first (powers the live dashboard ticker) |
+| GET | `/stores/{id}/layout` | Zone polygons + billing flags (powers the store-map heatmap) |
+| POST | `/stores/{id}/reset` | Clears a `*_LIVE` demo store before replay (gated; refuses real stores) |
 | GET | `/health` | DB status + per-store last event + `STALE_FEED` warning |
 
 All endpoints accept an optional `?date=YYYY-MM-DD`; the default window is the day of the
@@ -114,11 +133,32 @@ store's most recent event ("today" in live operation).
 
 ---
 
+## Requirements coverage
+
+Where each scored dimension of the brief is implemented (for quick review):
+
+| Requirement | Where | Evidence |
+|---|---|---|
+| Entry/exit + per-session visitor token | `pipeline/tracker.py` (`_handle_threshold`, Re-ID gallery) | door-line crossing; `visitor_id` per session |
+| Staff exclusion / re-entry / group | `pipeline/reid.py`, `tracker.py`; `app/analytics.py` | staff flagged + excluded at visitor level; `REENTRY` on re-id; each track = 1 ENTRY |
+| Schema compliance + unique ids | `app/models.py` (Pydantic v2 validators) | per-field validation, UUID + ISO-8601, zone/`queue_depth` cross-checks |
+| `/events/ingest` idempotent, partial success | `app/ingestion.py`, `routers/events.py` | dedup by `event_id`; per-item errors; `tests/test_ingest.py` |
+| `/metrics` (staff excl., zero-purchase, real-time) | `app/analytics.py` | visitor-level staff exclusion; compute-on-read |
+| `/funnel` session-based, no double-count | `app/analytics.py` (`compute_funnel`) | unit = `visitor_id`; `tests/test_metrics.py` |
+| Anomalies (severity + suggested_action) | `app/anomalies.py` | queue spike / conversion drop / dead zone |
+| Containerised, `docker compose up` | `Dockerfile`, `docker-compose.yml` | api + postgres, inline defaults |
+| Structured logs + `/health` | `app/middleware.py`, `app/health.py` | trace_id/latency/status JSON logs; `STALE_FEED` |
+| Tests >70% + edge cases | `tests/` (39 tests) | empty store, all-staff, zero-purchase, re-entry, 503, idempotency |
+| AI usage depth | `docs/DESIGN.md`, `docs/CHOICES.md`, test prompt blocks | AI-assisted decisions + 3 choices with overrides |
+| Live dashboard (Part E bonus) | `app/static/dashboard.html`, `pipeline/replay.py` | simulated real-time replay; metrics climb live |
+
+---
+
 ## Tests
 
 ```bash
 pip install -r requirements.txt
-pytest                      # 22 tests, ~93% statement coverage (gate: >70%)
+pytest                      # 39 tests, ~89% statement coverage (gate: >70%)
 ```
 
 Covered edge cases: empty store, all-staff clip, zero purchases, re-entry in funnel,
@@ -129,10 +169,9 @@ idempotency, graceful 503, low-confidence retention, group entry, billing-queue 
 ## Project layout
 
 ```
-app/        FastAPI service: ingest, metrics, funnel, heatmap, anomalies, health
-pipeline/   Detection: YOLOv8 + ByteTrack + OSNet Re-ID -> structured events
-dashboard/  Real-time replay tool (web dashboard is served by the API at /dashboard)
-data/       store_layout.json, pos_transactions.csv, sample_events.jsonl
+app/        FastAPI service: ingest, metrics, funnel, heatmap, anomalies, health + /dashboard
+pipeline/   Detection (YOLOv8 + ByteTrack + OSNet) -> events; replay.py (live demo); annotate.py (local video)
+data/       store_layout.json, pos_transactions.csv, seed_events_ST1008.jsonl
 tests/      pytest suite (prompt blocks at the top of each file)
 docs/       DESIGN.md, CHOICES.md
 ```

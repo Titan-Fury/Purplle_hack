@@ -26,6 +26,11 @@ torchreid/
 pipeline/output/
 events_*.jsonl
 
+# ---- Local demo artifacts (footage licence: never commit clip-derived video) ----
+app/static/demo.mp4
+*.db
+*.sqlite
+
 # ---- Python ----
 __pycache__/
 *.py[cod]

@@ -24,7 +24,7 @@
   .o2{width:560px;height:560px;right:-140px;top:8%;background:radial-gradient(circle,#22d3ee,transparent 70%)}
   .o3{width:380px;height:380px;left:28%;bottom:-140px;background:radial-gradient(circle,#a855f7,transparent 70%)}
   .o4{width:320px;height:320px;right:18%;bottom:4%;background:radial-gradient(circle,#34d399,transparent 70%)}
-  .wrap{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 22px 80px}
+  .wrap{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 22px 80px; perspective:1400px}
 
   header{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:22px}
   .logo{display:flex; align-items:center; gap:12px}
@@ -44,6 +44,7 @@
     color:var(--txt);padding:9px 16px;border-radius:11px;font-size:13px;font-weight:600;transition:.2s}
   .btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(124,131,255,.25)}
   .btn:active{transform:translateY(0)}
+  .btn.on{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#08111f;border-color:transparent}
   .ripple{position:absolute;border-radius:50%;transform:scale(0);background:rgba(255,255,255,.35);
     animation:rip .6s ease-out;pointer-events:none}
   @keyframes rip{to{transform:scale(4);opacity:0}}
@@ -52,18 +53,18 @@
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
 
   .grid{display:grid;gap:16px}
-  .kpis{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));margin-bottom:16px}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));margin-bottom:14px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-    box-shadow:0 10px 40px rgba(0,0,0,.35);transition:transform .25s,box-shadow .25s;
-    opacity:0;transform:translateY(14px);animation:rise .6s forwards}
-  @keyframes rise{to{opacity:1;transform:none}}
-  .card:hover{transform:translateY(-4px);box-shadow:0 18px 50px rgba(124,131,255,.18)}
+    box-shadow:0 10px 40px rgba(0,0,0,.35);transition:transform .18s ease-out,box-shadow .25s;
+    transform-style:preserve-3d;opacity:0;animation:rise .6s forwards}
+  @keyframes rise{to{opacity:1}}
+  .card:hover{box-shadow:0 18px 50px rgba(124,131,255,.18)}
   .kpi .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
   .kpi .value{font-size:34px;font-weight:800;margin-top:8px;line-height:1;
     background:linear-gradient(90deg,#fff,#c7ccff);-webkit-background-clip:text;background-clip:text;color:transparent}
   .kpi .foot{font-size:11px;color:var(--muted);margin-top:6px}
-  h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:0 0 14px;font-weight:700}
+  h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:0 0 14px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
   .two{grid-template-columns:1fr 1fr}
   @media(max-width:820px){.two{grid-template-columns:1fr}}
 
@@ -87,6 +88,24 @@
   .STALE_FEED{background:rgba(251,191,36,.16);color:var(--warn)}
   .NO_DATA{background:rgba(148,163,184,.16);color:var(--muted)}
   .muted{color:var(--muted);font-size:12px}
+
+  /* live event ticker */
+  .ticker{max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+  .ev{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:10px;font-size:12px;
+    background:rgba(255,255,255,.04);border:1px solid var(--line);animation:evin .4s both}
+  @keyframes evin{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+  .ev .et{font-weight:700;letter-spacing:.02em}
+  .ev .ez{color:var(--accent2)}
+  .ev .etime{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+  .tag-ENTRY,.tag-REENTRY{color:#86efac}.tag-EXIT{color:#fca5a5}
+  .tag-ZONE_ENTER,.tag-ZONE_DWELL,.tag-ZONE_EXIT{color:#c7ccff}
+  .tag-BILLING_QUEUE_JOIN,.tag-BILLING_QUEUE_ABANDON{color:#fcd34d}
+
+  /* store map */
+  #map{width:100%;height:auto;display:block;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--line)}
+  .zpoly{stroke:rgba(255,255,255,.18);stroke-width:.4;transition:fill .8s}
+  .zlbl{font:2.6px -apple-system,"Segoe UI",sans-serif;fill:#dfe5f5}
+  video{width:100%;border-radius:12px;display:block;background:#000}
 </style>
 </head>
 <body>
@@ -105,18 +124,23 @@
     </div>
     <div class="controls">
       <input id="store" value="ST1008" title="store id" />
-      <input id="date" placeholder="YYYY-MM-DD (optional)" style="width:170px" />
+      <input id="date" placeholder="YYYY-MM-DD (optional)" style="width:150px" />
+      <button class="btn" id="live" title="Watch ST1008_LIVE update as the replay streams events">▶ Live Replay</button>
       <button class="btn" id="refresh">Refresh</button>
       <span class="live"><span class="dot"></span><span id="tick">connecting…</span></span>
     </div>
   </header>
 
   <div class="grid kpis" id="kpis"></div>
-  <div class="muted" id="ctx" style="margin:-4px 2px 14px">Conversion correlates billing visits with POS within a 5-min window; it reads 0% when a clip falls in a purchase lull.</div>
+  <div class="muted" id="ctx" style="margin:-2px 2px 14px">Conversion correlates billing visits with POS within a 5-min window; it reads 0% when a clip falls in a purchase lull.</div>
 
   <div class="grid two" style="margin-bottom:16px">
     <div class="card"><h2>Conversion Funnel</h2><div id="funnel"></div></div>
-    <div class="card"><h2>Zone Heatmap · avg dwell</h2><div id="heatmap"></div></div>
+    <div class="card"><h2><span>Zone Heatmap · avg dwell</span><span class="muted" id="mapnote"></span></h2><svg id="map" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"></svg></div>
+  </div>
+  <div class="grid two" style="margin-bottom:16px">
+    <div class="card"><h2><span>Live Event Feed</span><span class="muted" id="evcount"></span></h2><div class="ticker" id="ticker"></div></div>
+    <div class="card" id="videoCard" style="display:none"><h2>Camera Feed · annotated detections</h2><video id="demoVid" autoplay muted loop playsinline></video><div class="muted" style="margin-top:8px">Local demo only — footage is not published (licence).</div></div>
   </div>
   <div class="grid two">
     <div class="card"><h2>Active Anomalies</h2><div id="anomalies"></div></div>
@@ -194,6 +218,19 @@ function frame(){
 }
 frame();
 
+/* ---------- 3D card tilt on hover ---------- */
+function bindTilt(){
+  document.querySelectorAll('.card').forEach(card => {
+    if(card._tilt) return; card._tilt = true;
+    card.addEventListener('mousemove', e => {
+      const r = card.getBoundingClientRect();
+      const px = (e.clientX - r.left)/r.width - .5, py = (e.clientY - r.top)/r.height - .5;
+      card.style.transform = `rotateY(${px*6}deg) rotateX(${-py*6}deg) translateZ(8px)`;
+    });
+    card.addEventListener('mouseleave', () => { card.style.transform = ''; });
+  });
+}
+
 /* ---------- button ripple ---------- */
 function rippleBtn(btn){
   btn.addEventListener('click', e => {
@@ -207,7 +244,6 @@ function rippleBtn(btn){
 
 /* ---------- data + animated render ---------- */
 const $ = id => document.getElementById(id);
-const pct = x => (x*100).toFixed(1)+'%';
 async function getJSON(p){ const r=await fetch(p); if(!r.ok) throw new Error(r.status); return r.json(); }
 
 const prevVals = {};
@@ -228,16 +264,67 @@ function buildKpis(){
     kpiCard('k_buy','Purchases','POS-correlated') +
     kpiCard('k_q','Queue','current / peak') +
     kpiCard('k_ab','Abandonment','left billing, no buy');
-  built=true;
+  built=true; bindTilt();
+}
+
+/* zone heatmap rendered on the store floor-plan polygons */
+let layoutCache = {};
+async function getLayout(store){
+  if(layoutCache[store]) return layoutCache[store];
+  try{ const l = await getJSON(`/stores/${store}/layout`); layoutCache[store]=l; return l; }
+  catch(e){ return null; }
+}
+function lerpColor(t){ // 0..1 -> indigo→cyan
+  const a=[124,131,255], b=[34,211,238];
+  const c=a.map((v,i)=>Math.round(v+(b[i]-v)*t));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+async function renderMap(store, heat){
+  const lay = await getLayout(store);
+  const svg = $('map');
+  if(!lay || !lay.zones.length){ svg.innerHTML=''; $('mapnote').textContent='no layout'; return; }
+  $('mapnote').textContent='dwell intensity';
+  const dwell = {}; (heat.zones||[]).forEach(z=>dwell[z.zone_id]={n:z.avg_dwell_norm||0,ms:z.avg_dwell_ms||0});
+  let out='';
+  for(const z of lay.zones){
+    if(z.is_staff_area) continue;
+    const pts = (z.polygon||[]).map(p=>`${(p[0]*100).toFixed(1)},${(p[1]*100).toFixed(1)}`).join(' ');
+    if(!pts) continue;
+    const d = dwell[z.zone_id]||{n:0,ms:0};
+    const t = Math.min(1, d.n/100);
+    const fill = d.n>0 ? lerpColor(t) : 'rgba(255,255,255,.05)';
+    const op = d.n>0 ? (0.25+0.55*t) : 0.5;
+    const cxp = z.polygon.reduce((s,p)=>s+p[0],0)/z.polygon.length*100;
+    const cyp = z.polygon.reduce((s,p)=>s+p[1],0)/z.polygon.length*100;
+    const secs = d.ms? (d.ms/1000).toFixed(0)+'s' : '';
+    out += `<polygon class="zpoly" points="${pts}" fill="${fill}" fill-opacity="${op}"></polygon>`;
+    out += `<text class="zlbl" x="${cxp}" y="${cyp}" text-anchor="middle">${z.zone_id.replace(/_/g,' ')}</text>`;
+    if(secs) out += `<text class="zlbl" x="${cxp}" y="${cyp+3}" text-anchor="middle" fill="#94a3b8">${secs}</text>`;
+  }
+  svg.innerHTML = out;
+}
+
+function renderTicker(evs){
+  const fmt = t => new Date(t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  $('evcount').textContent = evs.length ? evs.length+' recent' : '';
+  $('ticker').innerHTML = evs.length ? evs.map(e=>`
+    <div class="ev">
+      <span class="et tag-${e.event_type}">${e.event_type}</span>
+      ${e.zone_id?`<span class="ez">${e.zone_id}</span>`:''}
+      ${e.is_staff?'<span class="muted">staff</span>':''}
+      <span class="muted">${(e.visitor_id||'').slice(0,10)}</span>
+      <span class="etime">${fmt(e.timestamp)}</span>
+    </div>`).join('') : '<div class="muted">No events yet — run the replay to see the stream.</div>';
 }
 
 async function refresh(){
   const store=$('store').value.trim()||'ST1008', d=$('date').value.trim();
   const q=d?`?date=${d}`:'';
   try{
-    const [m,f,h,a]=await Promise.all([
+    const [m,f,h,a,ev]=await Promise.all([
       getJSON(`/stores/${store}/metrics${q}`), getJSON(`/stores/${store}/funnel${q}`),
-      getJSON(`/stores/${store}/heatmap${q}`), getJSON(`/stores/${store}/anomalies${q}`)]);
+      getJSON(`/stores/${store}/heatmap${q}`), getJSON(`/stores/${store}/anomalies${q}`),
+      getJSON(`/stores/${store}/events?limit=25`)]);
     if(!built) buildKpis();
     animateNum($('k_vis'), m.unique_visitors, v=>Math.round(v));
     animateNum($('k_conv'), m.conversion_rate, v=>(v*100).toFixed(1)+'%');
@@ -249,13 +336,10 @@ async function refresh(){
     $('funnel').innerHTML=f.stages.map(s=>`<div class="bar"><span class="name">${s.stage}</span>
       <span class="track"><span class="fill" data-w="${100*s.count/maxC}"></span></span>
       <span class="num">${s.count} · -${s.drop_off_pct}%</span></div>`).join('');
-
-    const conf=h.data_confidence==='LOW'?` <span class="muted">· low confidence (${h.session_count} sessions)</span>`:'';
-    $('heatmap').innerHTML=h.zones.map(z=>`<div class="bar"><span class="name">${z.zone_id}</span>
-      <span class="track"><span class="fill" data-w="${z.avg_dwell_norm}"></span></span>
-      <span class="num">${(z.avg_dwell_ms/1000).toFixed(1)}s</span></div>`).join('')+conf;
-
     requestAnimationFrame(()=>document.querySelectorAll('.fill').forEach(el=>el.style.width=(el.dataset.w||0)+'%'));
+
+    await renderMap(store, h);
+    renderTicker(ev.events||[]);
 
     $('anomalies').innerHTML=a.anomalies.length
       ? a.anomalies.map((x,i)=>`<div class="anom" style="animation-delay:${i*60}ms">
@@ -271,10 +355,27 @@ async function refresh(){
     $('tick').textContent='updated '+new Date().toLocaleTimeString();
   }catch(e){ $('tick').textContent='error: '+e.message; }
 }
-rippleBtn($('refresh'));
+
+/* ---------- live replay toggle (fast poll on ST1008_LIVE) ---------- */
+let timer=null, liveMode=false;
+function setPoll(ms){ if(timer) clearInterval(timer); timer=setInterval(refresh, ms); }
+$('live').addEventListener('click', ()=>{
+  liveMode=!liveMode;
+  $('live').classList.toggle('on', liveMode);
+  if(liveMode){ $('store').value='ST1008_LIVE'; layoutCache={}; setPoll(1000); }
+  else { $('store').value='ST1008'; layoutCache={}; setPoll(3000); }
+  refresh();
+});
+
+/* ---------- camera-feed video panel (local only; hidden if file absent) ---------- */
+fetch('/static/demo.mp4', {method:'HEAD'}).then(r=>{
+  if(r.ok){ $('demoVid').src='/static/demo.mp4'; $('videoCard').style.display=''; bindTilt(); }
+}).catch(()=>{});
+
+rippleBtn($('refresh')); rippleBtn($('live'));
 $('refresh').addEventListener('click', refresh);
 $('store').addEventListener('keydown', e=>{ if(e.key==='Enter') refresh(); });
-refresh(); setInterval(refresh, 3000);
+refresh(); setPoll(3000);
 </script>
 </body>
 </html>

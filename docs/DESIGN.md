@@ -104,3 +104,20 @@ correctly identified that SQLAlchemy's async engine runs query code inside green
 which coverage.py cannot trace without `concurrency = greenlet`. Adding that to
 `.coveragerc` moved measured coverage from 65% to ~93% — the tests had been exercising the
 code all along; only the measurement was wrong. I agreed and kept the fix.
+
+## Live dashboard (Part E)
+
+The brief rewards *proof that the pipeline → API → dashboard are genuinely connected, not
+batch-processed*. So beyond the static seeded view, `pipeline/replay.py` streams the real
+events into the API **in clip-time order** (scaled by `--speed`) onto a separate
+`ST1008_LIVE` store; the dashboard's **▶ Live Replay** button switches to that store and
+polls every second, so unique-visitors / funnel / queue visibly climb as events arrive. The
+live store is kept separate from the seeded `ST1008` so the always-on public demo never goes
+blank, and `POST /stores/{id}/reset` is **gated to `*_LIVE` ids** so production data can
+never be wiped.
+
+The dashboard (vanilla JS, no CDN) adds a store-map heatmap (rendered from `/layout`
+polygons), a live event ticker (`/events`), and 3D/parallax depth. The annotated
+camera-feed panel is **local-only by design**: the footage licence forbids publishing the
+clips, so `pipeline/annotate.py` writes a **git-ignored** `app/static/demo.mp4` that the
+dashboard shows only if present — the public deployment stays licence-compliant.
