@@ -20,6 +20,8 @@
       radial-gradient(900px 700px at 10% 4%, #f3edff 0%, transparent 60%),
       linear-gradient(180deg,#f7f5fe 0%, #efeafb 60%, #eae3fb 100%);
     overflow-x:hidden;
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    text-rendering:optimizeLegibility;
   }
 
   /* ---- flowing translucent 3D glass ribbons (light, premium) ---- */
@@ -91,8 +93,8 @@
   /* hidden legacy hero nodes kept for JS compatibility */
   .hero-frame,.hero-media{display:none}
 
-  .wrap{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:30px 24px 100px; perspective:1700px}
-  .scene{transform-style:preserve-3d; transition:transform .25s ease-out; will-change:transform}
+  .wrap{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:30px 24px 100px}
+  .scene{}
 
   header{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:24px}
   .logo{display:flex; align-items:center; gap:12px}
@@ -118,30 +120,24 @@
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
 
   .grid{display:grid;gap:16px}
-  .kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px;transform-style:preserve-3d;transform:translateZ(30px)}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:18px}
   .card{position:relative;overflow:hidden;border-radius:20px;padding:20px;
     background:var(--card);border:1px solid rgba(255,255,255,.7);
     backdrop-filter:blur(18px) saturate(135%);-webkit-backdrop-filter:blur(18px) saturate(135%);
     box-shadow:0 24px 56px rgba(124,92,255,.12), inset 0 1px 0 rgba(255,255,255,.85);
-    transition:transform .18s ease-out, box-shadow .25s; transform-style:preserve-3d;opacity:0;animation:rise .6s forwards}
+    transition:transform .18s ease-out, box-shadow .25s;opacity:0;animation:rise .6s forwards}
   .card::after{content:"";position:absolute;top:0;left:0;width:60%;height:100%;border-radius:inherit;pointer-events:none;
     background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.5) 50%,transparent 65%);
     transform:translateX(-170%);transition:transform .8s cubic-bezier(.22,1,.36,1)}
   .card:hover::after{transform:translateX(330%)}
   @keyframes rise{to{opacity:1}}
   .card:hover{transform:translateY(-5px);box-shadow:0 34px 70px rgba(124,92,255,.22), inset 0 1px 0 rgba(255,255,255,.9)}
-  .kpis .card{animation:rise .6s forwards, floatk 9s ease-in-out infinite;animation-delay:0s,var(--fd,0s)}
-  .kpis .card:hover{animation-play-state:paused,paused}
-  .kpis .card:nth-child(1){--fd:-0s}.kpis .card:nth-child(2){--fd:-1.8s}
-  .kpis .card:nth-child(3){--fd:-3.6s}.kpis .card:nth-child(4){--fd:-5.4s}.kpis .card:nth-child(5){--fd:-7.2s}
-  @keyframes floatk{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
   .kpi .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
   .kpi .value{font-size:36px;font-weight:800;margin-top:10px;line-height:1;color:var(--ink);
     background:linear-gradient(110deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
   .kpi .foot{font-size:11px;color:var(--muted);margin-top:7px}
   @media (prefers-reduced-motion: reduce){
-    .ribbon,.shard,.kpis .card,.spark,.mark{animation:none}
-    .scene{transition:none}
+    .ribbon,.shard,.spark,.mark,.dot,.scrollcue{animation:none}
   }
   h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:0 0 14px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
   .two{grid-template-columns:1fr 1fr}
@@ -252,14 +248,12 @@
 </div>
 
 <script>
-/* ---------- mouse parallax: scene tilt + ribbon drift ---------- */
+/* ---------- gentle background parallax (ribbons only; content stays crisp) ---------- */
 const sceneEl = document.getElementById('stage');
-const tiltEl = document.getElementById('scene');
 let pmx = 0, pmy = 0, tiltQueued = false;
 function applyTilt(){
   tiltQueued = false;
-  if(tiltEl) tiltEl.style.transform = `rotateX(${(-pmy*3).toFixed(2)}deg) rotateY(${(pmx*4).toFixed(2)}deg)`;
-  if(sceneEl) sceneEl.style.transform = `translate(${(pmx*18).toFixed(1)}px,${(pmy*18).toFixed(1)}px)`;
+  if(sceneEl) sceneEl.style.transform = `translate(${(pmx*16).toFixed(1)}px,${(pmy*16).toFixed(1)}px)`;
 }
 function queueTilt(){ if(!tiltQueued){ tiltQueued = true; requestAnimationFrame(applyTilt); } }
 addEventListener('mousemove', e => {
@@ -319,8 +313,15 @@ function rippleBtn(btn){
 const $ = id => document.getElementById(id);
 async function getJSON(p){ const r=await fetch(p); if(!r.ok) throw new Error(r.status); return r.json(); }
 
+/* Only touch the DOM when content actually changed — the auto-refresh poll would
+   otherwise rewrite identical HTML every few seconds and re-fire the entrance
+   animations, which reads as flicker/strain when the data is static. */
+function setHTML(el, html){ if(!el || el._sig === html) return false; el._sig = html; el.innerHTML = html; return true; }
+
 const prevVals = {};
 function animateNum(el, to, fmt){
+  if(!el) return;
+  if(el.id in prevVals && prevVals[el.id] === to){ el.textContent = fmt(to); return; }  // unchanged: no re-animate
   const from = prevVals[el.id]||0; prevVals[el.id]=to; const t0=performance.now(), dur=650;
   function step(t){ const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3);
     el.textContent = fmt(from+(to-from)*e); if(k<1) requestAnimationFrame(step); }
@@ -373,20 +374,20 @@ async function renderMap(store, heat){
     out += `<text class="zlbl" x="${cxp}" y="${cyp}" text-anchor="middle">${z.zone_id.replace(/_/g,' ')}</text>`;
     if(secs) out += `<text class="zlbl" x="${cxp}" y="${cyp+3}" text-anchor="middle" fill="#8983a0">${secs}</text>`;
   }
-  svg.innerHTML = out;
+  setHTML(svg, out);
 }
 
 function renderTicker(evs){
   const fmt = t => new Date(t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
   $('evcount').textContent = evs.length ? evs.length+' recent' : '';
-  $('ticker').innerHTML = evs.length ? evs.map(e=>`
+  setHTML($('ticker'), evs.length ? evs.map(e=>`
     <div class="ev">
       <span class="et tag-${e.event_type}">${e.event_type}</span>
       ${e.zone_id?`<span class="ez">${e.zone_id}</span>`:''}
       ${e.is_staff?'<span class="muted">staff</span>':''}
       <span class="muted">${(e.visitor_id||'').slice(0,10)}</span>
       <span class="etime">${fmt(e.timestamp)}</span>
-    </div>`).join('') : '<div class="muted">No events yet — run the replay to see the stream.</div>';
+    </div>`).join('') : '<div class="muted">No events yet — run the replay to see the stream.</div>');
 }
 
 async function refresh(){
@@ -404,25 +405,25 @@ async function refresh(){
     animateNum($('k_ab'), m.abandonment_rate, v=>(v*100).toFixed(1)+'%');
 
     const maxC=Math.max(...f.stages.map(s=>s.count),1);
-    $('funnel').innerHTML=f.stages.map(s=>`<div class="bar"><span class="name">${s.stage}</span>
+    if(setHTML($('funnel'), f.stages.map(s=>`<div class="bar"><span class="name">${s.stage}</span>
       <span class="track"><span class="fill" data-w="${100*s.count/maxC}"></span></span>
-      <span class="num">${s.count} · -${s.drop_off_pct}%</span></div>`).join('');
-    requestAnimationFrame(()=>document.querySelectorAll('.fill').forEach(el=>el.style.width=(el.dataset.w||0)+'%'));
+      <span class="num">${s.count} · -${s.drop_off_pct}%</span></div>`).join('')))
+      requestAnimationFrame(()=>document.querySelectorAll('.fill').forEach(el=>el.style.width=(el.dataset.w||0)+'%'));
 
     await renderMap(store, h);
     renderTicker(ev.events||[]);
 
-    $('anomalies').innerHTML=a.anomalies.length
+    setHTML($('anomalies'), a.anomalies.length
       ? a.anomalies.map((x,i)=>`<div class="anom" style="animation-delay:${i*60}ms">
           <span class="sev ${x.severity}">${x.severity}</span>
           <div><b>${x.type}</b><div class="muted">${x.suggested_action}</div></div></div>`).join('')
-      : '<div class="muted">No active anomalies. ✅</div>';
+      : '<div class="muted">No active anomalies. ✅</div>');
 
     const hs=await getJSON('/health'); const st=(hs.stores||[]).find(s=>s.store_id===store);
-    $('health').innerHTML=st
+    setHTML($('health'), st
       ? `<span class="badge ${st.feed}">${st.feed}</span>
          <span class="muted" style="margin-left:8px">last event: ${st.last_event||'—'}${st.lag_seconds!=null?` · ${st.lag_seconds}s ago`:''}</span>`
-      : '<span class="badge NO_DATA">NO_DATA</span>';
+      : '<span class="badge NO_DATA">NO_DATA</span>');
     $('tick').textContent='updated '+new Date().toLocaleTimeString();
   }catch(e){ $('tick').textContent='error: '+e.message; }
 }
