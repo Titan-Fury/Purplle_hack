@@ -1,0 +1,51 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: unit tests + coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install API + test deps
+        # The CV stack (torch/ultralytics) is heavy and runs on a GPU host, not in CI.
+        # We test the API, analytics, POS, anomalies and the camera/clip resolvers here;
+        # the pipeline integration test is exercised locally with the full stack.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt requests
+      - name: Run tests
+        run: pytest --ignore=tests/test_pipeline.py
+
+  docker:
+    name: docker compose smoke (acceptance gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose up
+        run: docker compose up -d --build
+      - name: Wait for the API to become healthy
+        run: |
+          for i in $(seq 1 40); do
+            if curl -fsS http://localhost:8000/health >/dev/null 2>&1; then
+              echo "API is up"; exit 0
+            fi
+            sleep 3
+          done
+          echo "API did not become healthy in time"; docker compose logs; exit 1
+      - name: Validate /metrics and an analytics endpoint
+        run: |
+          curl -fsS http://localhost:8000/metrics
+          curl -fsS http://localhost:8000/stores/ST1008/metrics
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
