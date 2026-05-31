@@ -73,3 +73,27 @@ async def test_reset_allowed_for_live_store(client):
     assert r.json()["deleted"] >= 1
     m = await client.get(f"/stores/{live}/metrics?date=2026-03-03")
     assert m.json()["unique_visitors"] == 0
+
+
+async def test_summary_batches_all_sections(client):
+    await _ingest(client, [
+        make_event("ENTRY", "VIS_A", ts="2026-03-03T14:30:00Z"),
+        make_event("ZONE_ENTER", "VIS_A", "MAKEUP", ts="2026-03-03T14:31:00Z"),
+    ])
+    r = await client.get(f"/stores/{STORE}/summary?date=2026-03-03")
+    assert r.status_code == 200
+    body = r.json()
+    assert set(body) >= {"metrics", "funnel", "heatmap", "anomalies", "events"}
+    assert body["metrics"]["unique_visitors"] == 1
+    assert body["funnel"]["stages"][0]["count"] == 1
+    assert len(body["events"]) == 2
+
+
+async def test_stats_counts_requests(client):
+    await client.get(f"/stores/{STORE}/metrics?date=2026-03-03")
+    r = await client.get("/stats")
+    assert r.status_code == 200
+    s = r.json()
+    assert s["requests_total"] >= 1
+    assert "endpoints" in s and "requests_by_status" in s
+    assert s["uptime_seconds"] >= 0

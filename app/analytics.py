@@ -162,10 +162,9 @@ async def compute_funnel(session, store_id, date_str=None) -> dict:
         e.visitor_id for e in events
         if e.event_type in ("ZONE_ENTER", "ZONE_DWELL") and e.zone_id not in billing_zones
     }
-    billing_visitors = {v for v, _ in _billing_presence(events, billing_zones)}
-    converted = converted_visitors(
-        store_id, _billing_presence(events, billing_zones), start, end
-    )
+    presence = _billing_presence(events, billing_zones)   # compute once, reuse
+    billing_visitors = {v for v, _ in presence}
+    converted = converted_visitors(store_id, presence, start, end)
 
     stages = [
         ("ENTRY", len(all_visitors)),

@@ -60,6 +60,24 @@ async def anomalies(
     return await compute_anomalies(session, store_id, date)
 
 
+@router.get("/{store_id}/summary")
+async def summary(
+    store_id: str,
+    date: str | None = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """One batched read powering the live dashboard — metrics + funnel + heatmap +
+    anomalies + recent events in a single round-trip (vs. five separate polls)."""
+    _check_store(store_id)
+    return {
+        "metrics": await compute_metrics(session, store_id, date),
+        "funnel": await compute_funnel(session, store_id, date),
+        "heatmap": await compute_heatmap(session, store_id, date),
+        "anomalies": await compute_anomalies(session, store_id, date),
+        "events": (await recent_events(session, store_id, 25))["events"],
+    }
+
+
 @router.get("/{store_id}/events")
 async def events(
     store_id: str,

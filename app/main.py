@@ -115,6 +115,14 @@ async def root() -> dict:
     return {"service": "store-intelligence", "version": app.version, "env": settings.app_env}
 
 
+@app.get("/stats", tags=["meta"])
+async def stats() -> dict:
+    """In-process observability counters (request volume, per-endpoint latency, errors,
+    events ingested) — the app-metrics complement to structured logs and /health."""
+    from .observability import snapshot
+    return snapshot()
+
+
 _DASHBOARD = Path(__file__).parent / "static" / "dashboard.html"
 
 

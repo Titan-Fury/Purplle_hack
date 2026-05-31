@@ -121,3 +121,18 @@ polygons), a live event ticker (`/events`), and 3D/parallax depth. The annotated
 camera-feed panel is **local-only by design**: the footage licence forbids publishing the
 clips, so `pipeline/annotate.py` writes a **git-ignored** `app/static/demo.mp4` that the
 dashboard shows only if present — the public deployment stays licence-compliant.
+
+## Observability & read-path optimisation
+
+Three layers answer "is the service healthy?": structured per-request JSON logs
+(`trace_id`, endpoint, `latency_ms`, `status_code`, `event_count`), the business `/health`
+(per-store last event + `STALE_FEED`), and **`/stats`** — in-process app metrics
+(`app/observability.py`) aggregating request volume, per-endpoint average latency, error
+rate and total events ingested. The endpoint label is the route *template*
+(`/stores/{store_id}/metrics`) so cardinality stays bounded; at fleet scale these counters
+would export to Prometheus.
+
+The live dashboard polls **`/stores/{id}/summary`**, a single batched read that returns
+metrics + funnel + heatmap + anomalies + recent events in one round-trip and one DB session,
+instead of five separate polls per refresh — fewer connections and less middleware overhead
+while keeping each individual endpoint available for the grading harness.

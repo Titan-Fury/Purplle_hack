@@ -7,6 +7,7 @@ import uuid
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
+from . import observability
 from .logging_setup import LOG
 
 
@@ -21,6 +22,11 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 
         latency_ms = round((time.perf_counter() - start) * 1000, 2)
         response.headers["x-trace-id"] = trace_id
+        # low-cardinality label from the matched route template (e.g. /stores/{store_id}/metrics)
+        route = request.scope.get("route")
+        endpoint_label = getattr(route, "path", request.url.path)
+        event_count = getattr(request.state, "event_count", None)
+        observability.record(endpoint_label, response.status_code, latency_ms, event_count)
         LOG.info(
             "request",
             extra={
@@ -30,7 +36,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
                 "method": request.method,
                 "status_code": response.status_code,
                 "latency_ms": latency_ms,
-                "event_count": getattr(request.state, "event_count", None),
+                "event_count": event_count,
             },
         )
         return response

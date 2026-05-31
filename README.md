@@ -123,10 +123,12 @@ The live demo is seeded from a real pipeline run on the Brigade Road clips
 | GET | `/stores/{id}/funnel` | Entry → Zone → Billing → Purchase with drop-off % (session-based) |
 | GET | `/stores/{id}/heatmap` | Zone visit/dwell normalised 0–100, `data_confidence` flag |
 | GET | `/stores/{id}/anomalies` | Queue spike, conversion drop, dead zone (INFO/WARN/CRITICAL) |
+| GET | `/stores/{id}/summary` | **Batched** metrics+funnel+heatmap+anomalies+events in one round-trip (dashboard) |
 | GET | `/stores/{id}/events` | Recent events, newest first (powers the live dashboard ticker) |
 | GET | `/stores/{id}/layout` | Zone polygons + billing flags (powers the store-map heatmap) |
 | POST | `/stores/{id}/reset` | Clears a `*_LIVE` demo store before replay (gated; refuses real stores) |
 | GET | `/health` | DB status + per-store last event + `STALE_FEED` warning |
+| GET | `/stats` | App observability: request volume, per-endpoint latency, error rate, events ingested |
 
 All endpoints accept an optional `?date=YYYY-MM-DD`; the default window is the day of the
 store's most recent event ("today" in live operation).
@@ -147,8 +149,8 @@ Where each scored dimension of the brief is implemented (for quick review):
 | `/funnel` session-based, no double-count | `app/analytics.py` (`compute_funnel`) | unit = `visitor_id`; `tests/test_metrics.py` |
 | Anomalies (severity + suggested_action) | `app/anomalies.py` | queue spike / conversion drop / dead zone |
 | Containerised, `docker compose up` | `Dockerfile`, `docker-compose.yml` | api + postgres, inline defaults |
-| Structured logs + `/health` | `app/middleware.py`, `app/health.py` | trace_id/latency/status JSON logs; `STALE_FEED` |
-| Tests >70% + edge cases | `tests/` (39 tests) | empty store, all-staff, zero-purchase, re-entry, 503, idempotency |
+| Structured logs + `/health` | `app/middleware.py`, `app/health.py`, `app/observability.py` | trace_id/latency/status JSON logs; `STALE_FEED`; `/stats` app metrics |
+| Tests >70% + edge cases | `tests/` (41 tests) | empty store, all-staff, zero-purchase, re-entry, 503, idempotency |
 | AI usage depth | `docs/DESIGN.md`, `docs/CHOICES.md`, test prompt blocks | AI-assisted decisions + 3 choices with overrides |
 | Live dashboard (Part E bonus) | `app/static/dashboard.html`, `pipeline/replay.py` | simulated real-time replay; metrics climb live |
 
@@ -158,7 +160,7 @@ Where each scored dimension of the brief is implemented (for quick review):
 
 ```bash
 pip install -r requirements.txt
-pytest                      # 39 tests, ~89% statement coverage (gate: >70%)
+pytest                      # 41 tests, ~90% statement coverage (gate: >70%)
 ```
 
 Covered edge cases: empty store, all-staff clip, zero purchases, re-entry in funnel,

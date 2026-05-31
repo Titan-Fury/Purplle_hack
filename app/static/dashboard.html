@@ -366,10 +366,8 @@ async function refresh(){
   const store=$('store').value.trim()||'ST1008', d=$('date').value.trim();
   const q=d?`?date=${d}`:'';
   try{
-    const [m,f,h,a,ev]=await Promise.all([
-      getJSON(`/stores/${store}/metrics${q}`), getJSON(`/stores/${store}/funnel${q}`),
-      getJSON(`/stores/${store}/heatmap${q}`), getJSON(`/stores/${store}/anomalies${q}`),
-      getJSON(`/stores/${store}/events?limit=25`)]);
+    const data = await getJSON(`/stores/${store}/summary${q}`);
+    const m=data.metrics, f=data.funnel, h=data.heatmap, a=data.anomalies, ev={events:data.events};
     if(!built) buildKpis();
     animateNum($('k_vis'), m.unique_visitors, v=>Math.round(v));
     if($('heroCount')) animateNum($('heroCount'), m.unique_visitors, v=>Math.round(v));
