@@ -39,6 +39,7 @@ class TrackState:
     zones_visited: set = field(default_factory=set)
     entry_crossings: int = 0
     in_billing: bool = False
+    queued: bool = False  # joined a real queue (someone ahead) -> eligible to "abandon"
 
 
 class StoreTracker:
@@ -209,6 +210,7 @@ class StoreTracker:
         occupants.add(st.visitor_id)
         st.in_billing = True
         if queue_depth > 0:
+            st.queued = True  # had to wait behind someone -> a real queue join
             self._emit(st, camera_id, "BILLING_QUEUE_JOIN", zone.zone_id, 0, confidence, ts,
                        queue_depth=queue_depth)
 
@@ -216,9 +218,14 @@ class StoreTracker:
         occupants = self._billing_occupants.get(zone.zone_id, set())
         occupants.discard(st.visitor_id)
         st.in_billing = False
-        # Candidate abandonment — the API confirms against POS (no transaction followed).
-        self._emit(st, camera_id, "BILLING_QUEUE_ABANDON", zone.zone_id, dwell, confidence, ts,
-                   queue_depth=len(occupants))
+        # Only a visitor who actually JOINED a queue (someone ahead) can abandon it —
+        # symmetric with _join_billing. A lone shopper or a pass-through is not an
+        # abandonment. Whether a true queue-join then *purchased* is confirmed by the
+        # API against POS (this stays a candidate abandonment).
+        if st.queued:
+            st.queued = False
+            self._emit(st, camera_id, "BILLING_QUEUE_ABANDON", zone.zone_id, dwell, confidence, ts,
+                       queue_depth=len(occupants))
 
     # ---- emission ---------------------------------------------------------
     def _emit(self, st, camera_id, event_type, zone_id, dwell_ms, confidence, ts,
