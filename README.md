@@ -29,6 +29,11 @@ python -m pipeline.replay --api http://localhost:8000 --speed 20
 
 The API is at `http://localhost:8000`, interactive docs at `/docs`, dashboard at `/dashboard`.
 
+> No Docker? `./run.sh` does the same locally (SQLite + auto-seed, no GPU/Postgres),
+> `./run.sh test` runs the suite, `./run.sh docker` is the compose path above. Every push
+> is checked by GitHub Actions (`.github/workflows/ci.yml`): unit tests **and** a
+> `docker compose up` boot smoke that hits `/health` and `/metrics`.
+
 ### Live dashboard demo (Part E)
 
 The replay streams the committed events into the API **in clip-time order** onto a separate
@@ -63,6 +68,23 @@ python -m pipeline.run --store ST1008 --layout data/store_layout.json \
 # live mode: stream events straight into the running API in real time
 python -m pipeline.run --store ST1008 --api-url http://localhost:8000 --realtime
 ```
+
+### Zero-config: an arbitrary folder of clips (no registered store)
+
+If a reviewer hands over a bare folder of clips with no `store_layout` entry, point the
+pipeline at it — roles, a default door-line and full-frame zones are synthesized on the fly
+(`pipeline/ingest.py`):
+
+```bash
+python -m pipeline.run --store ANY_ID --clips-dir path/to/clips \
+    --out pipeline/output/events_ANY_ID.jsonl
+```
+
+Each clip becomes a camera; its role is resolved by filename convention then content
+auto-classification. The entry camera gets a fallback vertical door-line at mid-frame so
+entry/exit counting still fires (real stores override it after a one-time calibration), and
+floor/billing cameras get a full-frame zone so dwell/queue/conversion still compute. Footfall
+(unique visitors) never depends on geometry, so even an all-`floor` folder yields a real funnel.
 
 ### Camera roles (entry / floor / billing / staff_area)
 

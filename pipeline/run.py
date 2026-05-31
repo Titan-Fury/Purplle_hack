@@ -10,6 +10,10 @@ Usage:
         --layout data/store_layout.json \
         --out pipeline/output/events_STORE_BLR_002.jsonl \
         [--api-url http://localhost:8000] [--realtime] [--max-seconds 120]
+
+Zero-config (arbitrary folder of clips, no registered store):
+    python -m pipeline.run --store ANY_ID --clips-dir path/to/clips \
+        --out pipeline/output/events_ANY_ID.jsonl
 """
 from __future__ import annotations
 
@@ -20,6 +24,7 @@ from .camera_resolver import resolve_role
 from .config import CONFIG
 from .detect import process_camera
 from .emit import EventEmitter
+from .ingest import discover_clips, synthesize_layout
 from .reid import ReIDGallery
 from .tracker import StoreTracker
 from .zones import load_layout
@@ -39,21 +44,35 @@ def main() -> None:
     p.add_argument("--realtime", action="store_true")
     p.add_argument("--max-seconds", type=float, default=None)
     p.add_argument("--cameras", nargs="*", default=None, help="subset of camera_ids")
+    p.add_argument("--clips-dir", default=None,
+                   help="zero-config mode: ingest every video under this folder, "
+                        "synthesizing cameras/roles/zones (no store_layout entry needed)")
     p.add_argument("--resolve-mode", choices=["registry", "auto"], default="registry",
                    help="registry: trust store_layout roles; auto: fall back to convention/VLM")
     args = p.parse_args()
 
-    layouts = load_layout(args.layout)
-    if args.store not in layouts:
-        raise SystemExit(f"store {args.store} not in {args.layout}")
-    layout = layouts[args.store]
-
-    # Resolve/confirm each camera's role (registry -> convention -> auto-classify).
-    for cam in layout.cameras.values():
-        role, method = resolve_role(cam.camera_id, cam.source, layout, mode=args.resolve_mode)
-        if method != "registry":
-            print(f"[pipeline] {cam.camera_id}: role '{role}' resolved by {method}")
-        cam.role = role
+    if args.clips_dir:
+        # Arbitrary folder of clips, no registered store: build a best-effort layout.
+        clips = discover_clips(args.clips_dir)
+        if not clips:
+            raise SystemExit(f"no video files under {args.clips_dir}")
+        mode = "auto" if args.resolve_mode == "registry" else args.resolve_mode
+        layout = synthesize_layout(args.store, clips, resolve_mode=mode)
+        print(f"[pipeline] clips-dir mode: {len(clips)} clip(s) -> store '{args.store}'")
+        for cam in layout.cameras.values():
+            extra = " (default door-line)" if cam.role == "entry" else ""
+            print(f"[pipeline]   {cam.camera_id}: {cam.role}{extra} <- {cam.source}")
+    else:
+        layouts = load_layout(args.layout)
+        if args.store not in layouts:
+            raise SystemExit(f"store {args.store} not in {args.layout}")
+        layout = layouts[args.store]
+        # Resolve/confirm each camera's role (registry -> convention -> auto-classify).
+        for cam in layout.cameras.values():
+            role, method = resolve_role(cam.camera_id, cam.source, layout, mode=args.resolve_mode)
+            if method != "registry":
+                print(f"[pipeline] {cam.camera_id}: role '{role}' resolved by {method}")
+            cam.role = role
 
     out = args.out or f"{CONFIG.output_dir}/events_{args.store}.jsonl"
     clip_start = _parse_epoch(args.clip_start)
