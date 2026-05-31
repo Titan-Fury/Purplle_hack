@@ -105,3 +105,20 @@ def test_schema_requires_zone_for_zone_events():
         Event.model_validate(_base(event_type="ZONE_ENTER"))
     with pytest.raises(Exception):
         Event.model_validate(_base(event_type="BILLING_QUEUE_JOIN", zone_id="BILLING"))
+
+
+def test_provided_sample_events_all_validate():
+    # The challenge ships data/sample_events.jsonl "to validate your detection layer".
+    # Every provided event must validate against our schema and carry a unique event_id —
+    # proof our contract matches the grader's expected output schema.
+    import json
+    import pathlib
+
+    path = pathlib.Path(__file__).resolve().parents[1] / "data" / "sample_events.jsonl"
+    events = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert events, "sample_events.jsonl should not be empty"
+    ids = set()
+    for e in events:
+        Event.model_validate(e)        # raises if the schema is violated
+        ids.add(e["event_id"])
+    assert len(ids) == len(events)     # event_ids globally unique

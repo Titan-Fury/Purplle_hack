@@ -1,19 +1,22 @@
-#!/usr/bin/env bash
-# One command to process all clips of a store into an event stream.
-# Usage:  ./pipeline/run.sh [STORE_ID] [API_URL]
-#   ./pipeline/run.sh                      -> batch, default store, JSONL only
-#   ./pipeline/run.sh STORE_BLR_002 http://localhost:8000   -> live stream to API
-set -euo pipefail
-
-STORE="${1:-STORE_BLR_002}"
-API_URL="${2:-}"
-LAYOUT="${STORE_LAYOUT_PATH:-data/store_layout.json}"
+#!/usr/bin/env sh
+# Process all CCTV clips of a store through the detection pipeline -> structured events.
+#
+#   ./pipeline/run.sh                      # store ST1008 -> pipeline/output/events_ST1008.jsonl
+#   ./pipeline/run.sh STORE_ID             # a different registered store
+#   ./pipeline/run.sh STORE_ID http://localhost:8000   # also stream events live into the API
+#
+# Output JSONL location is printed at the end. Requires the pipeline deps
+# (pip install -r requirements.txt ; plus torch/ultralytics/torchreid for detection).
+set -e
+STORE="${1:-ST1008}"
+API="${2:-}"
 OUT="pipeline/output/events_${STORE}.jsonl"
+mkdir -p pipeline/output
 
-ARGS=(--store "$STORE" --layout "$LAYOUT" --out "$OUT")
-if [[ -n "$API_URL" ]]; then
-  ARGS+=(--api-url "$API_URL" --realtime)
+CMD="python -m pipeline.run --store ${STORE} --layout data/store_layout.json --out ${OUT}"
+if [ -n "${API}" ]; then
+  CMD="${CMD} --api-url ${API} --realtime"
 fi
 
-python -m pipeline.run "${ARGS[@]}"
-echo "Events written to ${OUT}"
+echo "[run.sh] ${CMD}"
+exec ${CMD}
