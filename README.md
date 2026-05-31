@@ -130,9 +130,47 @@ The live demo is seeded from a real pipeline run on the Brigade Road clips
   line-crossings under-count; **footfall is measured by multi-camera unique visitors** (the
   funnel's denominator), not by raw ENTRY events.
 - Re-ID uses **OSNet** (torchreid, GPU) with torchvision ResNet18 / histogram fallbacks; it
-  deduplicated shoppers across cameras down to **14 visitors**, of which **2 were flagged
-  staff** (60s+ stationary dwell / back-of-house) and excluded, leaving 12 customers, plus
-  one real `REENTRY`. Detection runs at `vid_stride=2` for efficiency.
+  resolved the per-camera tracks to **14 store-level identities**, of which **2 were flagged
+  staff** (60s+ stationary dwell / back-of-house oracle) and excluded, leaving **12 customers**.
+  Detection runs at `vid_stride=2` for efficiency.
+
+### Measured results — full-clip run (evidence, not a single sampled window)
+
+The pipeline was run end-to-end over **all 5 cameras for their full duration** (~11.6 min of
+footage, ~9.7k processed frames at `vid_stride=2`), OSNet Re-ID active on GPU. Output is the
+committed `data/seed_events_ST1008.jsonl` (351 events) — reproducible with:
+
+```bash
+python -m pipeline.run --store ST1008 --layout data/store_layout.json --out data/seed_events_ST1008.jsonl
+```
+
+| Measured signal | Value | Note |
+|---|---|---|
+| Events emitted | **351** | across the full clips |
+| Store-level identities | **14** | OSNet-resolved |
+| → flagged staff / customers | **2 / 12** | back-of-house oracle + 60s-dwell rule |
+| ENTRY / EXIT / REENTRY (line) | **1 / 1 / 0** | door-line crossings — see accuracy note |
+| Distinct identities on entry cam | **3** | tracker formed 3 stable tracks at the door |
+| Cross-camera Re-ID merges | **1** | conservative → unique-visitor is an *upper bound* |
+| Billing JOIN / ABANDON | **4 / 4** | symmetric (abandon only after a real queue-join) |
+| Peak queue depth | **1** | no real queue formed in this window |
+| Avg dwell (s) | MAKEUP_FOH 11.6 · BILLING 10.8 · MAKEUP_WALL 7.3 · FRAGRANCE 3.4 · ENTRANCE 1.0 | per-zone, computed |
+
+**Entry-count accuracy, honestly (with error bars).** The glass-door line fired only **1**
+crossing, yet the entry camera clearly shows steady foot traffic (eyeball check of CAM 3:
+people at ~0/32/42/63/95/127/137s, several on the mall side through reflective glass). So the
+true footfall is **bracketed**:
+
+```
+raw line-crossings (1)   ≤   true footfall   ≤   total identities (12 customers)
+        lower bound (occlusion/geometry undercounts)      upper bound (some cross-camera dups unmerged)
+```
+
+The system therefore reports footfall as **multi-camera unique visitors (12)**, not raw line
+crossings — robust to a noisy door line. The remaining gap (entry-cam tracker formed only 3
+stable tracks against heavy motion-blur + lightbox glare) is a YOLOv8n/feed-quality limit on
+this specific low-bitrate camera, not a logic error; a higher-capacity detector (YOLOv8m /
+RT-DETR) would close it. This is the one place I'd invest next to lift the detection score.
 
 ---
 

@@ -26,10 +26,14 @@ store-level gallery and made it the design centre of `visitor_id` assignment.
 how I handle imperfection, not a perfect rate), ByteTrack for tracking (its two-stage
 association keeps low-confidence boxes alive through partial occlusion instead of dropping
 them), and OSNet for Re-ID. Crucially, the Re-ID layer is **3-tier and degrades
-gracefully**: OSNet (torchreid) → a torchvision **ResNet18 embedding** (what the real run
-used, GPU) → an HSV colour-histogram. On the real footage the CNN tier roughly halved
-duplicate visitor_ids (46→23) by deduplicating the same shopper across the entry and floor
-cameras — a concrete accuracy win over the histogram, without torchreid's painful build.
+gracefully**: OSNet (torchreid, the active tier on a GPU) → a torchvision **ResNet18
+embedding** → an HSV colour-histogram, so the pipeline never fails silently when weights or
+a GPU are missing. Re-running the shipped pipeline on the **full** Brigade Road clips (all 5
+cameras, ~9.7k processed frames) with OSNet active resolves the per-camera ByteTrack tracks
+to **14 store-level identities — 12 customers + 2 staff** (numbers are reproducible from
+`data/seed_events_ST1008.jsonl`; see the measured-results table in the README). Cross-camera
+merging is deliberately conservative (the coexistence guard prevents collapsing everyone into
+one id), so unique-visitor is an honest *upper bound* rather than an over-merged undercount.
 Staff are excluded with a rule-based classifier plus a back-of-house camera oracle rather
 than a VLM (see DESIGN.md) — I considered a VLM for uniform recognition and would revisit
 it if the heuristic's false-positive rate proved too high on real footage.
