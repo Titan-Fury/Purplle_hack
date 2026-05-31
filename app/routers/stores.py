@@ -4,7 +4,14 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..analytics import compute_funnel, compute_heatmap, compute_metrics, recent_events
+from ..analytics import (
+    _fetch,
+    compute_funnel,
+    compute_heatmap,
+    compute_metrics,
+    recent_events,
+    resolve_window,
+)
 from ..anomalies import compute_anomalies
 from ..db import delete_store_events, get_session
 from ..layout import get_store_meta, known_store_ids
@@ -67,13 +74,18 @@ async def summary(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """One batched read powering the live dashboard — metrics + funnel + heatmap +
-    anomalies + recent events in a single round-trip (vs. five separate polls)."""
+    anomalies + recent events in a single round-trip (vs. five separate polls).
+
+    The day-window and event set are resolved/fetched once and shared across all four
+    analytics functions, instead of each re-resolving and re-scanning independently."""
     _check_store(store_id)
+    window = await resolve_window(session, store_id, date)
+    events = await _fetch(session, store_id, *window)
     return {
-        "metrics": await compute_metrics(session, store_id, date),
-        "funnel": await compute_funnel(session, store_id, date),
-        "heatmap": await compute_heatmap(session, store_id, date),
-        "anomalies": await compute_anomalies(session, store_id, date),
+        "metrics": await compute_metrics(session, store_id, date, window=window, events=events),
+        "funnel": await compute_funnel(session, store_id, date, window=window, events=events),
+        "heatmap": await compute_heatmap(session, store_id, date, window=window, events=events),
+        "anomalies": await compute_anomalies(session, store_id, date, window=window, events=events),
         "events": (await recent_events(session, store_id, 25))["events"],
     }
 

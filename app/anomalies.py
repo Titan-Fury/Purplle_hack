@@ -24,10 +24,11 @@ def _sev_for_queue(depth: int, threshold: int) -> str:
     return "INFO"
 
 
-async def compute_anomalies(session, store_id, date_str=None) -> dict:
+async def compute_anomalies(session, store_id, date_str=None, *, window=None, events=None) -> dict:
     settings = get_settings()
-    start, end = await resolve_window(session, store_id, date_str)
-    events = await _fetch(session, store_id, start, end)
+    start, end = window or await resolve_window(session, store_id, date_str)
+    if events is None:
+        events = await _fetch(session, store_id, start, end)
     meta = get_store_meta(store_id)
     anomalies: list[dict] = []
 
@@ -51,7 +52,7 @@ async def compute_anomalies(session, store_id, date_str=None) -> dict:
             })
 
     # --- 2) conversion drop vs trailing 7-day average ---
-    today = await compute_metrics(session, store_id, date_str)
+    today = await compute_metrics(session, store_id, date_str, window=(start, end), events=events)
     today_cr = today["conversion_rate"]
     prior = []
     for i in range(1, settings.conversion_drop_lookback_days + 1):

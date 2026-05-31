@@ -86,17 +86,19 @@ def main() -> None:
 
     cam_ids = args.cameras or list(layout.cameras.keys())
     total = 0
-    for cam_id in cam_ids:
-        cam = layout.cameras.get(cam_id)
-        if cam is None or not cam.source:
-            print(f"[pipeline] skip {cam_id}: no source")
-            continue
-        print(f"[pipeline] processing {cam_id} ({cam.role}) <- {cam.source}")
-        frames = process_camera(layout, cam, tracker, clip_start, args.realtime, args.max_seconds)
-        total += frames
-        print(f"[pipeline]   {cam_id}: {frames} frames")
-
-    emitter.close()
+    try:
+        for cam_id in cam_ids:
+            cam = layout.cameras.get(cam_id)
+            if cam is None or not cam.source:
+                print(f"[pipeline] skip {cam_id}: no source")
+                continue
+            print(f"[pipeline] processing {cam_id} ({cam.role}) <- {cam.source}")
+            frames = process_camera(layout, cam, tracker, clip_start, args.realtime, args.max_seconds)
+            total += frames
+            print(f"[pipeline]   {cam_id}: {frames} frames")
+    finally:
+        # always flush + close so a mid-run camera error never loses buffered events
+        emitter.close()
     print(f"[pipeline] done: {emitter.written} events written"
           + (f", {emitter.invalid} invalid dropped" if emitter.invalid else ""))
 

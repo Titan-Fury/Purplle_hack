@@ -94,11 +94,12 @@ def _aware(dt: datetime) -> datetime:
     return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
 
 
-async def compute_metrics(session, store_id, date_str=None) -> dict:
+async def compute_metrics(session, store_id, date_str=None, *, window=None, events=None) -> dict:
     meta = get_store_meta(store_id)
     billing_zones = meta.billing_zone_ids if meta else set()
-    start, end = await resolve_window(session, store_id, date_str)
-    events = await _fetch(session, store_id, start, end)
+    start, end = window or await resolve_window(session, store_id, date_str)
+    if events is None:
+        events = await _fetch(session, store_id, start, end)
 
     visitors = {e.visitor_id for e in events}
     unique_visitors = len(visitors)
@@ -151,11 +152,12 @@ async def compute_metrics(session, store_id, date_str=None) -> dict:
     }
 
 
-async def compute_funnel(session, store_id, date_str=None) -> dict:
+async def compute_funnel(session, store_id, date_str=None, *, window=None, events=None) -> dict:
     meta = get_store_meta(store_id)
     billing_zones = meta.billing_zone_ids if meta else set()
-    start, end = await resolve_window(session, store_id, date_str)
-    events = await _fetch(session, store_id, start, end)
+    start, end = window or await resolve_window(session, store_id, date_str)
+    if events is None:
+        events = await _fetch(session, store_id, start, end)
 
     all_visitors = {e.visitor_id for e in events}
     zone_visitors = {
@@ -185,10 +187,11 @@ async def compute_funnel(session, store_id, date_str=None) -> dict:
     }
 
 
-async def compute_heatmap(session, store_id, date_str=None) -> dict:
+async def compute_heatmap(session, store_id, date_str=None, *, window=None, events=None) -> dict:
     meta = get_store_meta(store_id)
-    start, end = await resolve_window(session, store_id, date_str)
-    events = await _fetch(session, store_id, start, end)
+    start, end = window or await resolve_window(session, store_id, date_str)
+    if events is None:
+        events = await _fetch(session, store_id, start, end)
 
     visits: dict[str, set] = defaultdict(set)
     dwell: dict[str, dict[str, int]] = defaultdict(dict)
