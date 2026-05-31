@@ -4,9 +4,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..analytics import compute_funnel, compute_heatmap, compute_metrics
+from ..analytics import compute_funnel, compute_heatmap, compute_metrics, recent_events
 from ..anomalies import compute_anomalies
-from ..db import get_session
+from ..db import delete_store_events, get_session
 from ..layout import get_store_meta, known_store_ids
 
 router = APIRouter(prefix="/stores", tags=["analytics"])
@@ -58,3 +58,45 @@ async def anomalies(
 ) -> dict:
     _check_store(store_id)
     return await compute_anomalies(session, store_id, date)
+
+
+@router.get("/{store_id}/events")
+async def events(
+    store_id: str,
+    limit: int = Query(default=30, ge=1, le=200),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    """Recent events (newest first) for the live dashboard ticker."""
+    _check_store(store_id)
+    return await recent_events(session, store_id, limit)
+
+
+@router.get("/{store_id}/layout")
+async def layout(store_id: str) -> dict:
+    """Zone polygons + billing flags for rendering the store-map heatmap."""
+    meta = get_store_meta(store_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="no layout for store")
+    return {
+        "store_id": store_id,
+        "zones": [
+            {
+                "zone_id": z["zone_id"],
+                "polygon": z.get("polygon", []),
+                "is_billing": bool(z.get("is_billing")),
+                "is_staff_area": bool(z.get("is_staff_area")),
+                "sku_zone": z.get("sku_zone"),
+            }
+            for z in meta.zones
+        ],
+    }
+
+
+@router.post("/{store_id}/reset")
+async def reset(store_id: str, session: AsyncSession = Depends(get_session)) -> dict:
+    """Clear a live-demo store's events so the replay can start clean.
+    Gated to *_LIVE store ids so production data can never be deleted."""
+    if not store_id.endswith("_LIVE"):
+        raise HTTPException(status_code=403, detail="reset is only allowed for *_LIVE demo stores")
+    deleted = await delete_store_events(session, store_id)
+    return {"store_id": store_id, "deleted": deleted}

@@ -55,6 +55,32 @@ async def _fetch(session, store_id, start, end, include_staff=False) -> list[Eve
     return [e for e in rows if e.visitor_id not in staff_visitors]
 
 
+async def recent_events(session, store_id, limit: int = 30) -> dict:
+    """Most recent events for a store, newest first — powers the live dashboard ticker."""
+    stmt = (
+        select(EventRow)
+        .where(EventRow.store_id == store_id)
+        .order_by(EventRow.timestamp.desc(), EventRow.ingested_at.desc())
+        .limit(max(1, min(limit, 200)))
+    )
+    rows = (await session.execute(stmt)).scalars().all()
+    return {
+        "store_id": store_id,
+        "events": [
+            {
+                "event_type": e.event_type,
+                "zone_id": e.zone_id,
+                "visitor_id": e.visitor_id,
+                "camera_id": e.camera_id,
+                "timestamp": _aware(e.timestamp).isoformat(),
+                "is_staff": e.is_staff,
+                "queue_depth": e.queue_depth,
+            }
+            for e in rows
+        ],
+    }
+
+
 def _billing_presence(events, billing_zones) -> list[tuple[str, datetime]]:
     return [
         (e.visitor_id, _aware(e.timestamp))

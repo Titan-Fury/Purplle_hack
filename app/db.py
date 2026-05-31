@@ -75,3 +75,12 @@ async def get_session() -> AsyncSession:
         except Exception:
             await session.rollback()
             raise
+
+
+async def delete_store_events(session: AsyncSession, store_id: str) -> int:
+    """Delete all events for a store. Used only by the gated /reset demo endpoint."""
+    from sqlalchemy import delete
+
+    result = await session.execute(delete(EventRow).where(EventRow.store_id == store_id))
+    await session.commit()
+    return result.rowcount or 0
