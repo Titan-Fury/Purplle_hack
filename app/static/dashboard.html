@@ -25,7 +25,7 @@
   @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(12vw,8vh) scale(1.15)}}
   @keyframes drift2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-11vw,10vh) scale(.9)}}
   @keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(9vw,-10vh) scale(1.12)}}
-  #bg{position:fixed; inset:0; z-index:0; display:block; opacity:.7}
+  #bg{position:fixed; inset:0; z-index:0; display:block; opacity:.85}
   .wrap{position:relative; z-index:1; max-width:1160px; margin:0 auto; padding:26px 24px 96px; perspective:1700px}
   .scene{transform-style:preserve-3d; transition:transform .25s ease-out; will-change:transform}
 
@@ -186,51 +186,67 @@ addEventListener('mousemove', e => {
   pmx = e.clientX/innerWidth - .5; pmy = e.clientY/innerHeight - .5; queueTilt();
 }, {passive:true});
 
-/* ---------- interactive particle-network background ---------- */
+/* ---------- 3D particle constellation (perspective + camera parallax) ---------- */
 const cv = document.getElementById('bg'), cx = cv.getContext('2d');
-let W, H, DPR, parts = [], ripples = [];
-const mouse = {x:-9999, y:-9999};
+let W, H, DPR, P = [], ripples = [];
+const mouse = {x:0, y:0, on:false};                 // normalized -0.5..0.5
+let camYaw = 0, camPit = 0, spin = 0;
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 function resize(){
   DPR = Math.min(window.devicePixelRatio||1, 1.5);
   W = cv.width = innerWidth*DPR; H = cv.height = innerHeight*DPR;
   cv.style.width = innerWidth+'px'; cv.style.height = innerHeight+'px';
-  const n = Math.min(80, Math.floor(innerWidth*innerHeight/20000));
-  parts = Array.from({length:n}, () => ({
-    x:Math.random()*W, y:Math.random()*H,
-    vx:(Math.random()-.5)*.25*DPR, vy:(Math.random()-.5)*.25*DPR
-  }));
+  const n = Math.min(190, Math.floor(innerWidth*innerHeight/9000));
+  P = Array.from({length:n}, () => ({ x:Math.random()*2-1, y:Math.random()*2-1, z:Math.random()*2-1 }));
 }
 addEventListener('resize', resize); resize();
-addEventListener('mousemove', e => { mouse.x = e.clientX*DPR; mouse.y = e.clientY*DPR; });
-addEventListener('mouseout', () => { mouse.x = mouse.y = -9999; });
-addEventListener('pointerdown', e => {
-  const x = e.clientX*DPR, y = e.clientY*DPR;
-  ripples.push({x, y, r:0, a:1});
-  parts.forEach(p => { const dx=p.x-x, dy=p.y-y, d=Math.hypot(dx,dy)||1;
-    if(d<220*DPR){ p.vx += dx/d*2.2; p.vy += dy/d*2.2; } });   // burst
-});
-const LINK = 130, MOUSE_R = 170;
+addEventListener('mousemove', e => { mouse.x = e.clientX/innerWidth-.5; mouse.y = e.clientY/innerHeight-.5; mouse.on = true; }, {passive:true});
+addEventListener('mouseout', () => { mouse.on = false; });
+addEventListener('pointerdown', e => { ripples.push({x:e.clientX*DPR, y:e.clientY*DPR, r:0, a:1}); }, {passive:true});
+
+const FOCAL = 2.2, CAM_Z = 3.2, LINK3 = 0.44;
 function frame(){
   cx.clearRect(0,0,W,H);
-  for(const p of parts){
-    p.x+=p.vx; p.y+=p.vy; p.vx*=.992; p.vy*=.992;
-    if(p.x<0||p.x>W) p.vx*=-1; if(p.y<0||p.y>H) p.vy*=-1;
-    const dxm=p.x-mouse.x, dym=p.y-mouse.y, dm=Math.hypot(dxm,dym);
-    if(dm<MOUSE_R*DPR){ p.vx += dxm/dm*.06; p.vy += dym/dm*.06; }  // gentle repel
+  // ease the camera toward the cursor (parallax) + slow auto-orbit
+  const tYaw = mouse.on ? mouse.x*0.9 : 0, tPit = mouse.on ? mouse.y*0.6 : 0;
+  camYaw += (tYaw - camYaw)*0.05; camPit += (tPit - camPit)*0.05;
+  if(!RM) spin += 0.0016;
+  const yaw = camYaw + spin, pit = camPit + Math.sin(spin*0.6)*0.12;
+  const cyW=Math.cos(yaw), syW=Math.sin(yaw), cp=Math.cos(pit), sp=Math.sin(pit);
+  const cxC=W/2, cyC=H/2, S=Math.min(W,H)*0.5;
+
+  const pts = [];
+  for(const p of P){
+    const x = p.x*cyW - p.z*syW;            // yaw about Y
+    let z = p.x*syW + p.z*cyW;
+    const y = p.y*cp - z*sp;                 // pitch about X
+    z = p.y*sp + z*cp;
+    const persp = FOCAL/(CAM_Z + z);         // nearer (z<0) projects larger
+    pts.push({sx:cxC + x*persp*S, sy:cyC + y*persp*S, rx:x, ry:y, rz:z, depth:(z+1)/2, persp});
   }
-  for(let i=0;i<parts.length;i++){
-    for(let j=i+1;j<parts.length;j++){
-      const a=parts[i], b=parts[j], d=Math.hypot(a.x-b.x,a.y-b.y);
-      if(d<LINK*DPR){ cx.strokeStyle=`rgba(124,131,255,${(1-d/(LINK*DPR))*.5})`;
-        cx.lineWidth=DPR; cx.beginPath(); cx.moveTo(a.x,a.y); cx.lineTo(b.x,b.y); cx.stroke(); }
+  // 3D-proximity links, brightness by depth
+  for(let i=0;i<pts.length;i++){
+    const a=pts[i];
+    for(let j=i+1;j<pts.length;j++){
+      const b=pts[j], dx=a.rx-b.rx, dy=a.ry-b.ry, dz=a.rz-b.rz;
+      const d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+      if(d<LINK3){
+        const near = 1-(a.depth+b.depth)/2;
+        const al = (1-d/LINK3)*0.5*(0.2+near*0.9);
+        cx.strokeStyle = `rgba(124,131,255,${al.toFixed(3)})`;
+        cx.lineWidth = DPR*(0.5+near); cx.beginPath();
+        cx.moveTo(a.sx,a.sy); cx.lineTo(b.sx,b.sy); cx.stroke();
+      }
     }
   }
-  for(const p of parts){
-    const dm=Math.hypot(p.x-mouse.x,p.y-mouse.y);
-    if(dm<MOUSE_R*DPR){ cx.strokeStyle=`rgba(34,211,238,${(1-dm/(MOUSE_R*DPR))*.6})`;
-      cx.beginPath(); cx.moveTo(p.x,p.y); cx.lineTo(mouse.x,mouse.y); cx.stroke(); }
-    cx.fillStyle='rgba(180,190,255,.85)'; cx.beginPath();
-    cx.arc(p.x,p.y,1.6*DPR,0,7); cx.fill();
+  // depth-shaded points (cyan up front, violet in the back)
+  for(const a of pts){
+    const near = 1-a.depth;
+    const r = Math.max(0.4, DPR*(0.6+near*2.6)*a.persp);
+    const al = (0.22+near*0.78).toFixed(3);
+    cx.fillStyle = `rgba(${near>0.6?'34,211,238':'150,160,255'},${al})`;
+    cx.beginPath(); cx.arc(a.sx,a.sy,r,0,7); cx.fill();
   }
   ripples = ripples.filter(r => r.a>0.02);
   for(const r of ripples){ r.r += 6*DPR; r.a *= .94;
