@@ -71,9 +71,14 @@ The system was run end-to-end on the real Brigade Road (ST1008) footage. Honest 
   from 19:54→20:25 IST; the 2.5-min clip window (≈20:09–20:12) contains no transaction
   within the 5-minute correlation window, so the system correctly attributes *no* false
   conversions. On a longer window with in-window purchases it produces non-zero conversion.
-* **Entry counts are approximate.** The entry camera is an oblique, glare-heavy glass-door
-  view with a poorly-lit mall side; the entry line + hysteresis give a plausible count
-  (~6 entries / 2.5 min) but are not validated against frame-by-frame ground truth.
+* **Entry line validated & corrected.** Reviewing annotated entry-camera frames showed the
+  store interior is to the *left* and the mall to the *right*, so the original horizontal
+  mid-line was counting vertical motion *in the mall*. I replaced it with a vertical line at
+  the glass-door plane (x=0.68, inside=left), which is geometrically correct. But glare and
+  occlusion at the glass door fragment ByteTrack tracks right at the threshold, so continuous
+  line-crossings under-count (≈1–2 per clip). The system therefore treats **multi-camera
+  unique visitors (OSNet-deduped, 14) as the robust footfall metric** that drives the funnel;
+  the raw ENTRY/EXIT line events are a secondary directional signal, not the headcount.
 
 ## AI-Assisted Decisions
 

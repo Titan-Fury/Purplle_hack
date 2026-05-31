@@ -86,8 +86,11 @@ The live demo is seeded from a real pipeline run on the Brigade Road clips
   purchase lull (19:54 → 20:25 IST), so no transaction falls within the 5-minute window of
   the billing visits captured in this 2.5-minute clip. The system deliberately attributes
   **no false conversions**; on a window containing in-window purchases it reports non-zero.
-- **Entry counts are approximate** — the entry camera is an oblique, glare-heavy glass-door
-  view, so the line-crossing count (~6 / 2.5 min) is a reasonable estimate, not ground truth.
+- **Entry line was validated against the footage and corrected** to a vertical line at the
+  glass-door plane (the store is to the *left*, mall to the *right* — a horizontal line
+  mis-counted mall motion). Because glare/occlusion at the glass door fragment tracks, raw
+  line-crossings under-count; **footfall is measured by multi-camera unique visitors** (the
+  funnel's denominator), not by raw ENTRY events.
 - Re-ID uses **OSNet** (torchreid, GPU) with torchvision ResNet18 / histogram fallbacks; it
   deduplicated shoppers across cameras down to **14 visitors**, of which **2 were flagged
   staff** (60s+ stationary dwell / back-of-house) and excluded, leaving 12 customers, plus
