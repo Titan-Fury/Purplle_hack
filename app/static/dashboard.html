@@ -14,18 +14,15 @@
   html,body{margin:0;height:100%}
   body{
     font-family:-apple-system,"Segoe UI",Roboto,Inter,sans-serif; color:var(--txt);
-    background:#06080f; overflow-x:hidden;
+    background:radial-gradient(1000px 720px at 50% -8%, #1a1535 0%, #0b0b14 46%, #050507 100%);
+    overflow-x:hidden;
   }
-  /* continuously-drifting aurora (the moving background) */
-  .aurora{position:fixed;inset:-25%;z-index:0;pointer-events:none;filter:blur(70px) saturate(150%);opacity:.55}
-  .aurora i{position:absolute;border-radius:50%;mix-blend-mode:screen;will-change:transform}
-  .a1{width:55vw;height:55vw;left:-6%;top:-12%;background:radial-gradient(circle,#6d5cff,transparent 65%);animation:drift1 26s ease-in-out infinite}
-  .a2{width:50vw;height:50vw;right:-10%;top:4%;background:radial-gradient(circle,#22d3ee,transparent 65%);animation:drift2 32s ease-in-out infinite}
-  .a3{width:48vw;height:48vw;left:24%;bottom:-16%;background:radial-gradient(circle,#a855f7,transparent 65%);animation:drift3 38s ease-in-out infinite}
-  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(12vw,8vh) scale(1.15)}}
-  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-11vw,10vh) scale(.9)}}
-  @keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(9vw,-10vh) scale(1.12)}}
-  #bg{position:fixed; inset:0; z-index:0; display:block; opacity:.85}
+  /* one subtle, breathing purple bloom — clean modern dark, no particles */
+  .bloom{position:fixed;z-index:0;pointer-events:none;left:50%;top:34%;width:min(1100px,92vw);height:62vh;
+    transform:translate(-50%,-50%);border-radius:50%;filter:blur(46px);
+    background:radial-gradient(circle, rgba(124,131,255,.18), rgba(168,85,247,.09) 46%, transparent 72%);
+    animation:breathe 12s ease-in-out infinite}
+  @keyframes breathe{0%,100%{opacity:.7;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-53%) scale(1.08)}}
   .wrap{position:relative; z-index:1; max-width:1160px; margin:0 auto; padding:26px 24px 96px; perspective:1700px}
   .scene{transform-style:preserve-3d; transition:transform .25s ease-out; will-change:transform}
 
@@ -144,24 +141,34 @@
     background:linear-gradient(180deg,#ffffff,#aab4ff);-webkit-background-clip:text;background-clip:text;color:transparent;
     will-change:transform,opacity}
   .hero-sub{color:#c7cee0;max-width:520px;margin:20px auto 0;font-size:15px;line-height:1.5;will-change:transform,opacity}
-  .hero-frame{position:relative;margin-top:40px;width:min(780px,88vw);aspect-ratio:16/10;border-radius:22px;
-    overflow:hidden;border:1px solid rgba(255,255,255,.14);
-    box-shadow:0 50px 130px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.18);will-change:transform}
-  .hero-media{position:absolute;inset:-10%;will-change:transform;transform-origin:center;
+  .hero-frame{position:relative;margin-top:40px;width:min(900px,92vw);aspect-ratio:16/9;border-radius:20px;
+    overflow:hidden;border:1px solid rgba(255,255,255,.12);background:#05050b;
+    box-shadow:0 60px 150px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.16);will-change:transform}
+  .hero-media{position:absolute;inset:-12%;will-change:transform;transform-origin:center;pointer-events:none;
     background:
-      radial-gradient(55% 65% at 50% 38%, rgba(168,85,247,.95), transparent 70%),
-      radial-gradient(50% 60% at 72% 72%, rgba(34,211,238,.7), transparent 70%),
-      radial-gradient(55% 65% at 28% 78%, rgba(124,131,255,.85), transparent 70%),
-      linear-gradient(160deg,#10132b,#070912)}
-  .hero-frame::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-    box-shadow:inset 0 0 90px rgba(0,0,0,.5)}
-  .hero-cap{position:absolute;inset:auto 0 0 0;padding:20px 22px;display:flex;justify-content:space-between;
-    align-items:flex-end;gap:18px;text-align:left;background:linear-gradient(0deg,rgba(6,8,15,.78),transparent)}
-  .hero-count{font-size:42px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums;
-    filter:drop-shadow(0 0 16px rgba(34,211,238,.45))}
-  .hero-count i{display:block;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.14em;
-    text-transform:uppercase;font-style:normal;margin-top:7px}
-  .hero-cap p{max-width:300px;margin:0;font-size:12px;color:#cdd5e6;line-height:1.5}
+      radial-gradient(45% 55% at 50% 46%, rgba(168,85,247,.6), transparent 70%),
+      radial-gradient(38% 48% at 64% 66%, rgba(34,211,238,.26), transparent 70%),
+      radial-gradient(60% 70% at 36% 28%, rgba(124,131,255,.42), transparent 72%),
+      #060611}
+  .hero-vign{position:absolute;inset:0;pointer-events:none;background:
+    radial-gradient(125% 100% at 50% 0%, transparent 52%, rgba(0,0,0,.6)),
+    linear-gradient(180deg, rgba(0,0,0,.4), transparent 28%, transparent 58%, rgba(0,0,0,.7))}
+  .hero-nav{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;gap:22px;justify-content:center;
+    padding:15px;font-size:10px;letter-spacing:.2em;color:rgba(255,255,255,.5);text-transform:uppercase}
+  .hero-nav span{transition:color .2s;cursor:default}.hero-nav span:hover{color:#fff}
+  .hero-headline{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;
+    pointer-events:none;text-align:center;font-weight:800;letter-spacing:-.02em;line-height:.9;
+    font-size:clamp(34px,7vw,82px);color:rgba(255,255,255,.92);text-shadow:0 8px 50px rgba(0,0,0,.65);
+    transition:opacity .35s ease;will-change:opacity}
+  .hero-foot{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;justify-content:space-between;
+    align-items:flex-end;gap:16px;padding:20px 22px}
+  .hero-count{display:flex;flex-direction:column;gap:7px;text-align:left}
+  .hero-count b{font-size:42px;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums;
+    filter:drop-shadow(0 0 16px rgba(34,211,238,.4))}
+  .hero-count i{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.16em;text-transform:uppercase;font-style:normal}
+  .hero-cta{align-self:flex-end;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#fff;cursor:pointer;
+    border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:9px 16px;transition:.2s;white-space:nowrap}
+  .hero-cta:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.5)}
   .scrollcue{position:absolute;bottom:24px;left:50%;font-size:11px;letter-spacing:.25em;color:var(--muted);
     text-transform:uppercase;animation:bob 2s ease-in-out infinite}
   @keyframes bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,7px)}}
@@ -169,18 +176,20 @@
 </style>
 </head>
 <body>
-<div class="aurora"><i class="a1"></i><i class="a2"></i><i class="a3"></i></div>
-<canvas id="bg"></canvas>
+<div class="bloom"></div>
 
 <section class="hero" id="hero">
   <div class="kicker" id="heroKicker">Apex Retail · Store Intelligence</div>
-  <h1 class="hero-title">Apex<br>Store Intelligence</h1>
+  <h1 class="hero-title">The Store,<br>Decoded.</h1>
   <p class="hero-sub">Raw CCTV, turned into a live offline-store conversion engine — entries, dwell, queues and anomalies, measured from the camera feed in real time.</p>
   <div class="hero-frame" id="heroFrame">
     <div class="hero-media" id="heroMedia"></div>
-    <div class="hero-cap">
-      <div class="hero-count"><span id="heroCount">0</span><i>unique visitors today</i></div>
-      <p>Scroll to enter the live dashboard — funnel, zone heatmap and event stream.</p>
+    <div class="hero-vign"></div>
+    <nav class="hero-nav"><span>OVERVIEW</span><span>FUNNEL</span><span>ZONES</span><span>ANOMALIES</span><span>LIVE</span></nav>
+    <div class="hero-headline" id="heroHeadline">SEE EVERY VISIT</div>
+    <div class="hero-foot">
+      <div class="hero-count"><b id="heroCount">0</b><i>unique visitors today</i></div>
+      <div class="hero-cta" id="heroCta">Enter dashboard ↓</div>
     </div>
   </div>
   <div class="scrollcue">scroll to explore ↓</div>
@@ -240,6 +249,8 @@ const heroSub = document.querySelector('.hero-sub');
 const heroKicker = document.getElementById('heroKicker');
 const heroFrame = document.getElementById('heroFrame');
 const heroMedia = document.getElementById('heroMedia');
+const heroHeadline = document.getElementById('heroHeadline');
+const HEADLINES = ['SEE EVERY VISIT', 'MEASURE THE FUNNEL', 'BUILT FOR RETAIL'];
 let scrollQueued = false;
 function onScroll(){
   scrollQueued = false;
@@ -251,81 +262,19 @@ function onScroll(){
   if(heroKicker) heroKicker.style.opacity = Math.max(0, 1 - p*2).toFixed(3);
   if(heroSub){ heroSub.style.transform = `translateY(${(-y*0.12).toFixed(1)}px)`; heroSub.style.opacity = Math.max(0,1-p*1.6).toFixed(3); }
   if(heroFrame) heroFrame.style.transform = `translateY(${(-y*0.10).toFixed(1)}px) scale(${(1-p*0.06).toFixed(3)})`;
-  if(heroMedia) heroMedia.style.transform = `scale(${(1+p*0.55).toFixed(3)}) translateY(${(p*7).toFixed(1)}%)`;
+  if(heroMedia) heroMedia.style.transform = `scale(${(1+p*0.6).toFixed(3)}) translateY(${(p*7).toFixed(1)}%) rotate(${(p*4).toFixed(2)}deg)`;
+  if(heroHeadline){
+    const want = HEADLINES[Math.min(HEADLINES.length-1, Math.floor(p*HEADLINES.length))];
+    if(heroHeadline.textContent !== want) heroHeadline.textContent = want;
+  }
   if(hero){ hero.style.opacity = Math.max(0, 1 - p*0.85).toFixed(3); hero.style.pointerEvents = p>0.6?'none':'auto'; }
 }
 addEventListener('scroll', () => { if(!scrollQueued){ scrollQueued = true; requestAnimationFrame(onScroll); } }, {passive:true});
 onScroll();
-
-/* ---------- 3D particle constellation (perspective + camera parallax) ---------- */
-const cv = document.getElementById('bg'), cx = cv.getContext('2d');
-let W, H, DPR, P = [], ripples = [];
-const mouse = {x:0, y:0, on:false};                 // normalized -0.5..0.5
-let camYaw = 0, camPit = 0, spin = 0;
-const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-function resize(){
-  DPR = Math.min(window.devicePixelRatio||1, 1.5);
-  W = cv.width = innerWidth*DPR; H = cv.height = innerHeight*DPR;
-  cv.style.width = innerWidth+'px'; cv.style.height = innerHeight+'px';
-  const n = Math.min(190, Math.floor(innerWidth*innerHeight/9000));
-  P = Array.from({length:n}, () => ({ x:Math.random()*2-1, y:Math.random()*2-1, z:Math.random()*2-1 }));
-}
-addEventListener('resize', resize); resize();
-addEventListener('mousemove', e => { mouse.x = e.clientX/innerWidth-.5; mouse.y = e.clientY/innerHeight-.5; mouse.on = true; }, {passive:true});
-addEventListener('mouseout', () => { mouse.on = false; });
-addEventListener('pointerdown', e => { ripples.push({x:e.clientX*DPR, y:e.clientY*DPR, r:0, a:1}); }, {passive:true});
-
-const FOCAL = 2.2, CAM_Z = 3.2, LINK3 = 0.44;
-function frame(){
-  cx.clearRect(0,0,W,H);
-  // ease the camera toward the cursor (parallax) + slow auto-orbit
-  const tYaw = mouse.on ? mouse.x*0.9 : 0, tPit = mouse.on ? mouse.y*0.6 : 0;
-  camYaw += (tYaw - camYaw)*0.05; camPit += (tPit - camPit)*0.05;
-  if(!RM) spin += 0.0016;
-  const yaw = camYaw + spin, pit = camPit + Math.sin(spin*0.6)*0.12;
-  const cyW=Math.cos(yaw), syW=Math.sin(yaw), cp=Math.cos(pit), sp=Math.sin(pit);
-  const cxC=W/2, cyC=H/2, S=Math.min(W,H)*0.5;
-
-  const pts = [];
-  for(const p of P){
-    const x = p.x*cyW - p.z*syW;            // yaw about Y
-    let z = p.x*syW + p.z*cyW;
-    const y = p.y*cp - z*sp;                 // pitch about X
-    z = p.y*sp + z*cp;
-    const persp = FOCAL/(CAM_Z + z);         // nearer (z<0) projects larger
-    pts.push({sx:cxC + x*persp*S, sy:cyC + y*persp*S, rx:x, ry:y, rz:z, depth:(z+1)/2, persp});
-  }
-  // 3D-proximity links, brightness by depth
-  for(let i=0;i<pts.length;i++){
-    const a=pts[i];
-    for(let j=i+1;j<pts.length;j++){
-      const b=pts[j], dx=a.rx-b.rx, dy=a.ry-b.ry, dz=a.rz-b.rz;
-      const d=Math.sqrt(dx*dx+dy*dy+dz*dz);
-      if(d<LINK3){
-        const near = 1-(a.depth+b.depth)/2;
-        const al = (1-d/LINK3)*0.5*(0.2+near*0.9);
-        cx.strokeStyle = `rgba(124,131,255,${al.toFixed(3)})`;
-        cx.lineWidth = DPR*(0.5+near); cx.beginPath();
-        cx.moveTo(a.sx,a.sy); cx.lineTo(b.sx,b.sy); cx.stroke();
-      }
-    }
-  }
-  // depth-shaded points (cyan up front, violet in the back)
-  for(const a of pts){
-    const near = 1-a.depth;
-    const r = Math.max(0.4, DPR*(0.6+near*2.6)*a.persp);
-    const al = (0.22+near*0.78).toFixed(3);
-    cx.fillStyle = `rgba(${near>0.6?'34,211,238':'150,160,255'},${al})`;
-    cx.beginPath(); cx.arc(a.sx,a.sy,r,0,7); cx.fill();
-  }
-  ripples = ripples.filter(r => r.a>0.02);
-  for(const r of ripples){ r.r += 6*DPR; r.a *= .94;
-    cx.strokeStyle=`rgba(34,211,238,${r.a})`; cx.lineWidth=2*DPR;
-    cx.beginPath(); cx.arc(r.x,r.y,r.r,0,7); cx.stroke(); }
-  requestAnimationFrame(frame);
-}
-frame();
+const heroCta = document.getElementById('heroCta');
+if(heroCta) heroCta.addEventListener('click', () => {
+  const w = document.querySelector('.wrap'); if(w) w.scrollIntoView({behavior:'smooth'});
+});
 
 /* ---------- button ripple ---------- */
 function rippleBtn(btn){
