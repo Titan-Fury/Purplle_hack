@@ -14,17 +14,26 @@
   html,body{margin:0;height:100%}
   body{
     font-family:-apple-system,"Segoe UI",Roboto,Inter,sans-serif; color:var(--txt);
-    background:radial-gradient(1200px 800px at 80% -10%,#15193a 0%,var(--bg1) 40%,var(--bg0) 100%);
-    overflow-x:hidden;
+    background:#06080f; overflow-x:hidden;
   }
+  /* continuously-drifting aurora (the moving background) */
+  .aurora{position:fixed;inset:-25%;z-index:0;pointer-events:none;filter:blur(70px) saturate(150%);opacity:.55}
+  .aurora i{position:absolute;border-radius:50%;mix-blend-mode:screen;will-change:transform}
+  .a1{width:55vw;height:55vw;left:-6%;top:-12%;background:radial-gradient(circle,#6d5cff,transparent 65%);animation:drift1 26s ease-in-out infinite}
+  .a2{width:50vw;height:50vw;right:-10%;top:4%;background:radial-gradient(circle,#22d3ee,transparent 65%);animation:drift2 32s ease-in-out infinite}
+  .a3{width:48vw;height:48vw;left:24%;bottom:-16%;background:radial-gradient(circle,#a855f7,transparent 65%);animation:drift3 38s ease-in-out infinite}
+  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(12vw,8vh) scale(1.15)}}
+  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-11vw,10vh) scale(.9)}}
+  @keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(9vw,-10vh) scale(1.12)}}
   #bg{position:fixed; inset:0; z-index:0; display:block}
   .orbs{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-  .orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.45;will-change:transform;transition:transform .12s ease-out}
+  .orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.4;will-change:transform;transition:transform .12s ease-out}
   .o1{width:440px;height:440px;left:-90px;top:-70px;background:radial-gradient(circle,#7c83ff,transparent 70%)}
   .o2{width:560px;height:560px;right:-140px;top:8%;background:radial-gradient(circle,#22d3ee,transparent 70%)}
   .o3{width:380px;height:380px;left:28%;bottom:-140px;background:radial-gradient(circle,#a855f7,transparent 70%)}
   .o4{width:320px;height:320px;right:18%;bottom:4%;background:radial-gradient(circle,#34d399,transparent 70%)}
-  .wrap{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 22px 80px; perspective:1400px}
+  .wrap{position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:22px 22px 90px; perspective:1700px}
+  .scene{transform-style:preserve-3d; transition:transform .25s ease-out; will-change:transform}
 
   header{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:22px}
   .logo{display:flex; align-items:center; gap:12px}
@@ -53,17 +62,35 @@
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
 
   .grid{display:grid;gap:16px}
-  .kpis{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));margin-bottom:14px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;
-    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-    box-shadow:0 10px 40px rgba(0,0,0,.35);transition:transform .18s ease-out,box-shadow .25s;
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(165px,1fr));margin-bottom:18px;transform-style:preserve-3d;transform:translateZ(34px)}
+  .card{position:relative;overflow:hidden;border-radius:18px;padding:18px;
+    background:linear-gradient(160deg,rgba(42,50,76,.55),rgba(16,20,34,.5));
+    border:1px solid rgba(255,255,255,.10);
+    backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);
+    box-shadow:0 20px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14);
+    transition:transform .18s ease-out, box-shadow .25s;
     transform-style:preserve-3d;opacity:0;animation:rise .6s forwards}
+  /* acrylic neon edge */
+  .card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;opacity:.75;
+    background:linear-gradient(140deg,rgba(124,131,255,.55),transparent 38%,transparent 62%,rgba(34,211,238,.45));
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+    mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}
   @keyframes rise{to{opacity:1}}
-  .card:hover{box-shadow:0 18px 50px rgba(124,131,255,.18)}
+  .card:hover{box-shadow:0 28px 64px rgba(124,131,255,.30), 0 0 0 1px rgba(34,211,238,.28), inset 0 1px 0 rgba(255,255,255,.18)}
+  /* floating KPI widgets (staggered, like the reference mockups) */
+  .kpis .card{animation:rise .6s forwards, floatk 7.5s ease-in-out infinite;animation-delay:0s,var(--fd,0s)}
+  .kpis .card:nth-child(1){--fd:-0s}.kpis .card:nth-child(2){--fd:-1.4s}
+  .kpis .card:nth-child(3){--fd:-2.8s}.kpis .card:nth-child(4){--fd:-4.2s}.kpis .card:nth-child(5){--fd:-5.6s}
+  @keyframes floatk{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
   .kpi .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
   .kpi .value{font-size:34px;font-weight:800;margin-top:8px;line-height:1;
-    background:linear-gradient(90deg,#fff,#c7ccff);-webkit-background-clip:text;background-clip:text;color:transparent}
+    background:linear-gradient(90deg,#fff,#9ad8ff 60%,#c4b5ff);-webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 14px rgba(124,131,255,.35))}
   .kpi .foot{font-size:11px;color:var(--muted);margin-top:6px}
+  @media (prefers-reduced-motion: reduce){
+    .aurora i,.kpis .card,.spark{animation:none}
+    .scene{transition:none}
+  }
   h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:0 0 14px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
   .two{grid-template-columns:1fr 1fr}
   @media(max-width:820px){.two{grid-template-columns:1fr}}
@@ -109,6 +136,7 @@
 </style>
 </head>
 <body>
+<div class="aurora"><i class="a1"></i><i class="a2"></i><i class="a3"></i></div>
 <div class="orbs">
   <span class="orb o1" data-depth="0.025"></span>
   <span class="orb o2" data-depth="0.055"></span>
@@ -131,6 +159,7 @@
     </div>
   </header>
 
+  <div class="scene" id="scene">
   <div class="grid kpis" id="kpis"></div>
   <div class="muted" id="ctx" style="margin:-2px 2px 14px">Conversion correlates billing visits with POS within a 5-min window; it reads 0% when a clip falls in a purchase lull.</div>
 
@@ -146,11 +175,13 @@
     <div class="card"><h2>Active Anomalies</h2><div id="anomalies"></div></div>
     <div class="card"><h2>Feed Health</h2><div id="health"></div></div>
   </div>
+  </div>
 </div>
 
 <script>
 /* ---------- mouse + scroll parallax (layered depth) ---------- */
 const orbEls = [...document.querySelectorAll('.orb')];
+const sceneEl = document.getElementById('scene');
 let pmx = 0, pmy = 0, psy = 0;
 function applyParallax(){
   for(const o of orbEls){
@@ -158,6 +189,8 @@ function applyParallax(){
     const tx = pmx * d * 900, ty = pmy * d * 900 - psy * d * 6;
     o.style.transform = `translate3d(${tx}px,${ty}px,0)`;
   }
+  // isometric scene tilt — the whole grid leans toward the cursor in 3D
+  if(sceneEl) sceneEl.style.transform = `rotateX(${(-pmy*5).toFixed(2)}deg) rotateY(${(pmx*6).toFixed(2)}deg)`;
 }
 addEventListener('mousemove', e => {
   pmx = e.clientX/innerWidth - .5; pmy = e.clientY/innerHeight - .5; applyParallax();
