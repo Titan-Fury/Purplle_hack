@@ -19,7 +19,6 @@ identities — so even an all-"floor" folder produces a meaningful funnel.
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 from .camera_resolver import auto_classify, role_from_convention
 from .zones import StoreLayout

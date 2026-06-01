@@ -17,7 +17,6 @@ os.environ["STORE_LAYOUT_PATH"] = "data/store_layout.json"
 os.environ["POS_CSV_PATH"] = "data/pos_transactions.csv"
 
 import httpx  # noqa: E402
-import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
 from httpx import ASGITransport  # noqa: E402
 

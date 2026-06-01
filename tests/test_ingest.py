@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 
-from tests.conftest import STORE, make_event
+from tests.conftest import make_event
 
 
 async def test_ingest_partial_success(client):

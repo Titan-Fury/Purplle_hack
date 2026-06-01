@@ -8,7 +8,6 @@ suggested_action an operator can act on immediately:
 """
 from __future__ import annotations
 
-from collections import defaultdict
 from datetime import timedelta
 
 from .analytics import _aware, _fetch, compute_metrics, resolve_window

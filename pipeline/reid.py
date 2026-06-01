@@ -10,7 +10,6 @@ entry camera and the overlapping floor camera resolves to one visitor_id.
 """
 from __future__ import annotations
 
-import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Optional

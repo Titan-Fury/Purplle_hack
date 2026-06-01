@@ -40,6 +40,7 @@ class TrackState:
     entry_crossings: int = 0
     in_billing: bool = False
     queued: bool = False  # joined a real queue (someone ahead) -> eligible to "abandon"
+    _pending_reentry: bool = False  # Re-ID flagged this new track as a returning visitor
 
 
 class StoreTracker:
@@ -112,7 +113,7 @@ class StoreTracker:
             if cam.role == "entry":
                 # identity assigned; ENTRY/REENTRY emitted on the actual line crossing
                 st.prev_side = line_side(cam.entry_line, cx, cy)
-            st._pending_reentry = is_reentry  # type: ignore[attr-defined]
+            st._pending_reentry = is_reentry
 
         st.last_seen = ts
 
@@ -154,8 +155,8 @@ class StoreTracker:
         st.prev_side = side
         if going_inside:
             st.entry_crossings += 1
-            et = "REENTRY" if getattr(st, "_pending_reentry", False) or st.has_entered else "ENTRY"
-            st._pending_reentry = False  # type: ignore[attr-defined]
+            et = "REENTRY" if st._pending_reentry or st.has_entered else "ENTRY"
+            st._pending_reentry = False
             st.has_entered = True
             self._emit(st, cam.camera_id, et, None, 0, confidence, ts)
         else:
