@@ -3,12 +3,25 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>
+  /* set theme before first paint to avoid a flash: stored choice, else OS preference */
+  (function(){ try{
+    var t = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', t);
+  }catch(e){ document.documentElement.setAttribute('data-theme','light'); } })();
+</script>
 <title>Apex Store Intelligence — Live</title>
 <style>
   :root{
     --bg0:#efeafb; --bg1:#f7f5fe; --ink:#161029; --ink2:#5b5570; --muted:#8983a0;
     --line:rgba(22,16,41,.08); --card:rgba(255,255,255,.66);
     --accent:#7c5cff; --accent2:#a855f7; --accent3:#22b8cf;
+    --ok:#10b981; --warn:#f59e0b; --crit:#f43f6e;
+  }
+  :root[data-theme="dark"]{
+    --bg0:#0c0a1a; --bg1:#13102a; --ink:#f3f0ff; --ink2:#b9b2d6; --muted:#8b84a8;
+    --line:rgba(255,255,255,.10); --card:rgba(30,26,54,.55);
+    --accent:#8b6dff; --accent2:#b56bff; --accent3:#34d0e6;
     --ok:#10b981; --warn:#f59e0b; --crit:#f43f6e;
   }
   *{box-sizing:border-box}
@@ -26,6 +39,26 @@
 
   /* ---- flowing translucent 3D glass ribbons (light, premium) ---- */
   .stage{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+  /* WebGL 3D crystal layer — sits above the gradient/ribbons, below the UI */
+  #bg3d{position:fixed;inset:0;z-index:0;pointer-events:none;display:block}
+  /* ---- dark-theme surfaces ---- */
+  [data-theme="dark"] body{
+    background:
+      radial-gradient(1100px 760px at 78% -6%, #1a1530 0%, transparent 55%),
+      radial-gradient(900px 700px at 10% 4%, #181235 0%, transparent 60%),
+      linear-gradient(180deg,#0e0b1e 0%, #0b0918 60%, #0a0816 100%);
+  }
+  [data-theme="dark"] .ribbon{mix-blend-mode:screen;opacity:.5}
+  [data-theme="dark"] .shard{background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.02));border-color:rgba(255,255,255,.12)}
+  [data-theme="dark"] .card::after{background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.12) 50%,transparent 65%)}
+  [data-theme="dark"] .hero-cta.ghost,[data-theme="dark"] input,[data-theme="dark"] .btn{background:rgba(255,255,255,.06)}
+  [data-theme="dark"] .anom,[data-theme="dark"] .ev{background:rgba(255,255,255,.045)}
+  [data-theme="dark"] #map{background:rgba(139,109,255,.07)}
+  /* theme toggle in the top nav */
+  .themebtn{width:38px;height:38px;border-radius:11px;cursor:pointer;display:grid;place-items:center;line-height:1;
+    background:var(--card);border:1px solid var(--line);color:var(--ink);font-size:16px;transition:.2s;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .themebtn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(124,92,255,.25)}
   .ribbon{position:absolute;border-radius:46% 54% 60% 40%/52% 44% 56% 48%;filter:blur(8px);
     background:linear-gradient(135deg,rgba(168,85,247,.30),rgba(124,92,255,.16) 45%,rgba(34,184,207,.18));
     box-shadow:inset 0 0 60px rgba(255,255,255,.6);mix-blend-mode:normal;will-change:transform}
@@ -188,11 +221,13 @@
   <div class="ribbon r3"></div>
   <div class="shard"></div>
 </div>
+<canvas id="bg3d"></canvas>
 
 <nav class="topnav">
   <div class="brand"><span class="mark"></span>Apex</div>
   <div class="navlinks"><span onclick="document.querySelector('.wrap').scrollIntoView({behavior:'smooth'})">Overview</span><span onclick="document.querySelector('.wrap').scrollIntoView({behavior:'smooth'})">Funnel</span><span onclick="document.querySelector('.wrap').scrollIntoView({behavior:'smooth'})">Zones</span><span onclick="document.querySelector('.wrap').scrollIntoView({behavior:'smooth'})">Anomalies</span></div>
   <button class="getstarted" onclick="document.querySelector('.wrap').scrollIntoView({behavior:'smooth'})">Open dashboard</button>
+  <button class="themebtn" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">☾</button>
 </nav>
 
 <section class="hero" id="hero">
@@ -448,6 +483,118 @@ rippleBtn($('refresh')); rippleBtn($('live'));
 $('refresh').addEventListener('click', refresh);
 $('store').addEventListener('keydown', e=>{ if(e.key==='Enter') refresh(); });
 refresh(); setPoll(3000);
+</script>
+
+<!-- vendored locally so the 3D background works offline / in CI / in the container -->
+<script src="/static/three.min.js"></script>
+<script>
+/* ---------- theme (dark mode) toggle ---------- */
+(function(){
+  const root = document.documentElement;
+  const btn = document.getElementById('themeToggle');
+  const mq = matchMedia('(prefers-color-scheme: dark)');
+  const current = () => root.getAttribute('data-theme') || (mq.matches ? 'dark' : 'light');
+  const syncIcon = () => { if(btn) btn.textContent = current() === 'dark' ? '☀' : '☾'; };
+  function apply(t, persist){
+    root.setAttribute('data-theme', t);
+    if(persist){ try{ localStorage.setItem('theme', t); }catch(e){} }
+    syncIcon();
+    if(window.__bg3d) window.__bg3d.setTheme(t);
+  }
+  syncIcon();
+  if(btn) btn.addEventListener('click', () => apply(current() === 'dark' ? 'light' : 'dark', true));
+  /* follow OS changes only while the user has not chosen explicitly */
+  if(mq.addEventListener) mq.addEventListener('change', e => {
+    let stored = null; try{ stored = localStorage.getItem('theme'); }catch(_){}
+    if(!stored) apply(e.matches ? 'dark' : 'light', false);
+  });
+})();
+
+/* ---------- animated 3D glass-crystal background (Three.js, vendored) ---------- */
+(function(){
+  const canvas = document.getElementById('bg3d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce || !canvas || !window.THREE) return;          // CSS ribbons remain the fallback
+  let renderer;
+  try{ renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true}); }
+  catch(e){ return; }                                     // no WebGL -> CSS fallback
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setClearColor(0x000000, 0);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 100);
+  camera.position.z = 8;
+
+  const PALETTE = {
+    light: { cols:[0x7c5cff,0x22b8cf,0xa855f7,0x7c5cff], amb:0xffffff, key:0.95, op:0.50, edge:0.22 },
+    dark:  { cols:[0x8b6dff,0x34d0e6,0xb56bff,0x8b6dff], amb:0x6b6b9a, key:1.20, op:0.62, edge:0.32 },
+  };
+  const key = new THREE.DirectionalLight(0xffffff, 1); key.position.set(4,6,8); scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.5); fill.position.set(-6,-3,4); scene.add(fill);
+  const amb = new THREE.AmbientLight(0xffffff, 0.5); scene.add(amb);
+
+  function makeGeo(i){
+    if(i===1) return new THREE.OctahedronGeometry(1,0);
+    if(i===2) return new THREE.DodecahedronGeometry(1,0);
+    return new THREE.IcosahedronGeometry(1,0);
+  }
+  const specs = [
+    {geo:0, r:1.7, pos:[ 3.2, 1.2,-1], spin: 0.10},
+    {geo:1, r:1.2, pos:[-3.6, 1.8, 0], spin:-0.14},
+    {geo:0, r:0.9, pos:[-1.8,-2.2, 1], spin: 0.18},
+    {geo:2, r:1.4, pos:[ 1.0,-1.6,-2], spin:-0.08},
+  ];
+  const crystals = [];
+  for(const s of specs){
+    const mat = new THREE.MeshStandardMaterial({color:0x7c5cff, metalness:0.2, roughness:0.25,
+      flatShading:true, transparent:true, opacity:0.5});
+    const mesh = new THREE.Mesh(makeGeo(s.geo), mat);
+    mesh.scale.setScalar(s.r); mesh.position.set(s.pos[0], s.pos[1], s.pos[2]);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry),
+      new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:0.25}));
+    mesh.add(edges);
+    mesh.userData = {spin:s.spin, edge:edges};
+    scene.add(mesh); crystals.push(mesh);
+  }
+
+  function setTheme(t){
+    const p = PALETTE[t] || PALETTE.light;
+    crystals.forEach((m,i) => {
+      m.material.color.setHex(p.cols[i % p.cols.length]); m.material.opacity = p.op;
+      m.userData.edge.material.opacity = p.edge;
+    });
+    key.intensity = p.key; amb.color.setHex(p.amb);
+  }
+  setTheme(document.documentElement.getAttribute('data-theme') || 'light');
+  window.__bg3d = { setTheme };
+
+  let mx = 0, my = 0;
+  addEventListener('mousemove', e => { mx = e.clientX/innerWidth - 0.5; my = e.clientY/innerHeight - 0.5; }, {passive:true});
+  function resize(){ renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); }
+  addEventListener('resize', resize); resize();
+
+  const clock = new THREE.Clock();
+  let raf = 0;
+  function tick(){
+    const dt = clock.getDelta(), t = clock.elapsedTime;
+    crystals.forEach((m,i) => {
+      m.rotation.x += m.userData.spin * dt;
+      m.rotation.y += m.userData.spin * 0.8 * dt;
+      m.position.y += Math.sin(t*0.4 + i) * 0.0016;
+    });
+    camera.position.x += (mx*1.6 - camera.position.x) * 0.04;
+    camera.position.y += (-my*1.2 - camera.position.y) * 0.04;
+    camera.lookAt(0,0,0);
+    renderer.render(scene, camera);
+    raf = requestAnimationFrame(tick);
+  }
+  /* pause when the tab is hidden to save the GPU */
+  document.addEventListener('visibilitychange', () => {
+    if(document.hidden){ cancelAnimationFrame(raf); raf = 0; }
+    else if(!raf){ clock.getDelta(); tick(); }
+  });
+  tick();
+})();
 </script>
 </body>
 </html>

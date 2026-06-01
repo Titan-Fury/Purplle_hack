@@ -11,6 +11,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 
 from . import health
@@ -124,6 +125,9 @@ async def stats() -> dict:
 
 
 _DASHBOARD = Path(__file__).parent / "static" / "dashboard.html"
+
+# Serve vendored assets (three.min.js, optional local demo.mp4) for the dashboard.
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 
 @app.get("/dashboard", tags=["meta"], include_in_schema=False)
