@@ -41,6 +41,10 @@ The replay streams the committed events into the API **in clip-time order** onto
 pipeline → API → dashboard are genuinely connected, not batch-loaded. Click **▶ Live Replay**
 in the header (it switches to `ST1008_LIVE` and polls every second), then run step 4.
 
+The dashboard is one self-contained page (vanilla JS, no CDN) with an animated 3D background,
+a light/dark theme toggle (follows your OS, remembers your choice), and graceful
+reduced-motion / offline / no-WebGL fallbacks.
+
 Optional **camera-feed panel** (local only): the annotated clip contains the CCTV footage,
 which the licence forbids publishing, so it is **never committed**. Generate it locally and the
 dashboard will show it automatically:
@@ -210,9 +214,9 @@ Where each scored dimension of the brief is implemented (for quick review):
 | Anomalies (severity + suggested_action) | `app/anomalies.py` | queue spike / conversion drop / dead zone |
 | Containerised, `docker compose up` | `Dockerfile`, `docker-compose.yml` | api + postgres, inline defaults |
 | Structured logs + `/health` | `app/middleware.py`, `app/health.py`, `app/observability.py` | trace_id/latency/status JSON logs; `STALE_FEED`; `/stats` app metrics |
-| Tests >70% + edge cases | `tests/` (41 tests) | empty store, all-staff, zero-purchase, re-entry, 503, idempotency |
+| Tests >70% + edge cases | `tests/` (49 tests, ~90% coverage) | empty store, all-staff, zero-purchase, re-entry, 503, idempotency, end-to-end |
 | AI usage depth | `docs/DESIGN.md`, `docs/CHOICES.md`, test prompt blocks | AI-assisted decisions + 3 choices with overrides |
-| Live dashboard (Part E bonus) | `app/static/dashboard.html`, `pipeline/replay.py` | simulated real-time replay; metrics climb live |
+| Live dashboard (Part E bonus) | `app/static/dashboard.html`, `pipeline/replay.py` | simulated real-time replay; metrics climb live; animated 3D background + dark mode |
 
 ---
 
@@ -220,7 +224,7 @@ Where each scored dimension of the brief is implemented (for quick review):
 
 ```bash
 pip install -r requirements.txt
-pytest                      # 41 tests, ~90% statement coverage (gate: >70%)
+pytest                      # 49 tests, ~90% statement coverage (gate: >70%)
 ```
 
 Covered edge cases: empty store, all-staff clip, zero purchases, re-entry in funnel,
